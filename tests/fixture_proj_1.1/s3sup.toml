@@ -1,0 +1,28 @@
+[aws]
+region_name = 'eu-west-1'
+s3_bucket_name = 'www.test.com'
+s3_project_root = '/staging/'
+
+[[path_specific]]
+path = '.*'
+Cache-Control = 'private; max-age=400'
+
+[[path_specific]]
+path = 'robots.txt'
+Content-Type = 'text/plain'
+
+[[path_specific]]
+path = '^assets/.*'
+Cache-Control = 'max-age=12000'
+
+[[path_specific]]
+path = '^assets/.*\.css'
+Cache-Control = 'max-age=1212'
+
+[[path_specific]]
+path = '.*\.pdf'
+StorageClass = 'REDUCED_REDUNDANCY'
+
+[[path_specific]]
+path = 'about-us/duplicate.html'
+Cache-Control = 'max-age=14000'

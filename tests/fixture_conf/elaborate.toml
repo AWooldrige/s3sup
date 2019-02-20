@@ -1,0 +1,42 @@
+###############################################################################
+# PATH SPECIFIC SETTINGS
+#
+# If multiple [[path_specific]] entries match a path:
+#  * Directives are combined from all matching [[path_specific]] entries.
+#  * The last matching [[path_specific]] wins for equivalent directive keys.
+###############################################################################
+[[path_specific]]
+path = '^recipe/.*'
+Cache-Control = 'max-age=320'
+
+# Don't cache for long, as tranlations change
+[[path_specific]]
+path = '^recipe/en-de/.*$'
+Content-Language = 'de-DE, en-CA'
+Cache-Control = 'max-age=90'
+
+# New trial recipe format for a search engine
+[[path_specific]]
+path = 'recipe/in-dev/chef-card'
+Content-Type = 'text/chefcard3'
+
+[[path_specific]]
+path = '^regular-churn/.*'
+StorageClass = 'REDUCED_REDUNDANCY'
+Cache-Control = 'max-age=10'
+
+    [path_specific.S3Metadata]
+    transient = 'yup'
+
+[[path_specific]]
+path= '^recipedownload/[0-9]+.pdf'
+Content-Disposition = 'attachment'
+
+
+###############################################################################
+# OTHER SETTINGS
+###############################################################################
+[mimetype_overrides]
+'.jpg' = 'text/snafu'
+'.woff2' = 'font/woff2'
+'.pdf' = 'PDF'

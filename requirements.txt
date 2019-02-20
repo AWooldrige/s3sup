@@ -1,0 +1,6 @@
+boto3>=1,<2
+click>=7,<8
+jsonschema>=2,<3
+toml>=0.10,<1
+flake8
+moto>=1,<2

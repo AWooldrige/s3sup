@@ -1,0 +1,129 @@
+{
+    "title": "Schema for s3sitedeploy configuration files",
+    "type": "object",
+    "properties": {
+        "aws": {
+            "description": "AWS configuration values",
+            "type": "object",
+            "properties": {
+                "region_name": {
+                    "description": "AWS region to connect to",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "s3_bucket_name": {
+                    "description": "S3 bucket identified. E.g. testbucket",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "s3_project_root": {
+                    "description": "S3 prefix under where to place the project",
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": ["region_name", "s3_bucket_name", "s3_project_root"],
+            "additionalProperties": false
+        },
+        "path_specific": {
+            "description": "A list of directives to apply to certain paths. Directives appearing later in the list take precedence.",
+            "type": "array",
+            "items": {
+                "description": "A directive must include the path property",
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "description": "A regular expression or path to a file - relative to the project root.",
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "_comment": {
+                        "type": "string"
+                    },
+                    "ACL": {
+                        "type": "string",
+                        "enum": [
+                            "private",
+                            "public-read",
+                            "public-read-write",
+                            "authenticated-read",
+                            "aws-exec-read",
+                            "bucket-owner-read",
+                            "bucket-owner-full-control"
+                        ]
+                    },
+                    "StorageClass": {
+                        "type": "string",
+                        "enum": [
+                            "STANDARD",
+                            "REDUCED_REDUNDANCY",
+                            "STANDARD_IA",
+                            "ONEZONE_IA",
+                            "INTELLIGENT_TIERING",
+                            "GLACIER"
+                        ]
+                    },
+                    "WebsiteRedirectLocation": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "Cache-Control": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "Content-Disposition": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "Content-Type": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "Content-Encoding": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "Content-Language": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "S3Metadata": {
+                        "type": "object",
+                        "description": "Metadata headers set on the object",
+                        "patternProperties": {
+                            "^.+$": { "type": "string" }
+                        },
+                        "additionalProperties": false
+                    },
+                    "charset": {
+                        "description": "Character encoding of file. Appended to Content-Type.",
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "required": ["path"],
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        },
+        "mimetype_overrides": {
+            "description": "A list of mimetypes ",
+            "type": "object",
+            "patternProperties": {
+                "^[a-zA-Z0-9]+$": { "type": "string" }
+            }
+        },
+        "charset": {
+            "description": "Default character encoding of files.",
+            "type": "string",
+            "minLength": 1,
+            "default": "utf-8"
+        },
+        "charset_mimetypes": {
+            "description": "Which mimetypes should have charset appended to Content-Type",
+            "type": "string",
+            "minLength": 1
+        }
+    },
+    "additionalProperties": false
+}
