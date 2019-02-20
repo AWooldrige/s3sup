@@ -18,8 +18,7 @@
                 },
                 "s3_project_root": {
                     "description": "S3 prefix under where to place the project",
-                    "type": "string",
-                    "minLength": 1
+                    "type": "string"
                 }
             },
             "required": ["region_name", "s3_bucket_name", "s3_project_root"],

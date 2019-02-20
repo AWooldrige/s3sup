@@ -86,7 +86,7 @@ The following example configuration:
     [aws]
     region_name = 'eu-west-1'
     s3_bucket_name = 'mys3websitebucket'
-    s3_project_root = '/'
+    s3_project_root = ''
 
 
     [[path_specific]]
@@ -115,6 +115,8 @@ Example structure:
 
 ## Backlog
 
+ * [ ] Add tests for s3_project_root starting or ending with a slash, or being
+   blank.
  * [ ] Add guide for using s3sup with existing projects already uploaded to S3.
  * [ ] Allow S3 website redirects to be set.
  * [ ] Allow custom error page to be set.

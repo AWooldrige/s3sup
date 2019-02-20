@@ -18,7 +18,7 @@ SKELETON_TOML = """
 [aws]
 region_name = ''  # E.g. 'eu-west-1'
 s3_bucket_name = '' # E.g. 'mys3websitebucketname'
-s3_project_root = '/'  # Root location for project within S3, e.g. '/staging/'
+s3_project_root = ''  # Root location for project within S3, e.g. 'staging/'
 
 
 ###############################################################################

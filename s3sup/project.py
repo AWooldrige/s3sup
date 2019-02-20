@@ -38,10 +38,11 @@ class Project:
         return boto3.session.Session(**args)
 
     def _obj_path(self, rel_path):
-        pr = self.rules['aws']['s3_project_root']
-        if pr.endswith('/'):
+        pr = self.rules['aws']['s3_project_root'].lstrip('/').rstrip('/')
+        if pr == '':
             return '{0}{1}'.format(pr, rel_path)
-        return '{0}/{1}'.format(pr, rel_path)
+        else:
+            return '{0}/{1}'.format(pr, rel_path)
 
     def _local_fs_path(self, rel_path):
         return os.path.join(self.local_project_root, rel_path)
