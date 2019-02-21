@@ -27,10 +27,11 @@ setup(
         'Programming Language :: Python :: 3 :: Only'
     ],
     keywords='s3sup AWS S3 static',
-    packages=find_packages(exclude=['contrib', 'docs', 's3sup.tests']),
+    packages=find_packages(exclude=['contrib', 'docs', 'tests']),
     python_requires='>=3, <4',
     install_requires=[
         'boto3>=1,<2',
+        'requests>=2.21,<3',  # Workaround as boto3 likes latest requests
         'click>=7,<8',
         'jsonschema>=2,<3',
         'toml>=0.10,<1',

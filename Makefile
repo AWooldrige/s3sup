@@ -2,6 +2,10 @@
 test:: venv
 	. venv/bin/activate && python3 -m unittest
 
+.PHONY: tox
+tox:
+	tox -p auto
+
 .PHONY: flake8
 flake8:: venv
 	. venv/bin/activate && flake8 s3sup/ tests/

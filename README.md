@@ -118,6 +118,7 @@ Example structure:
  * [ ] Add tests for s3_project_root starting or ending with a slash, or being
    blank.
  * [ ] Add guide for using s3sup with existing projects already uploaded to S3.
+ * [ ] Add guide for using s3sup with new site completely from scratch.
  * [ ] Allow S3 website redirects to be set.
  * [ ] Allow custom error page to be set.
  * [ ] Add example terminal GIFs to the getting started guide.
