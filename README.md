@@ -2,32 +2,15 @@
 s3sup may be better than other S3 syncing solutions (e.g. `s3sync`) if you host
 a static site on S3. Features include:
 
- * Mimetype detection, with `Content-Type` set correctly.
- * Set HTTP headers on groups of files/pages or individually.
- * Fast and accurate synchronisation to S3 (through maintaining a catalogue of
+ * MIME type detection, with `Content-Type` set correctly.
+ * Set HTTP headers (e.g. `Cache-Control`) on groups of files/pages or
+   individually.
+ * Fast and efficient synchronisation to S3 (through maintaining a catalogue of
    state), reducing pain for making frequent small site changes.
 
 s3sup can be installed using `pip`:
 
     pip install s3sup
-
-At any point, add `--help` onto a command or subcommand for usage information:
-
-    $ s3sup upload --help
-    Usage: s3sup upload [OPTIONS]
-
-      Synchronise local static site to S3.
-
-      Use --dryrun to test behaviour without changes actually being made to S3.
-      Or use "s3sup status".
-
-    Options:
-      -v, --verbose          Output running commentary.
-      -p, --projectdir TEXT  Local s3sup project directory. Containing the
-                             s3sup.toml file.
-      -d, --dryrun           Simulate changes to be made. Don't modify files on
-                             S3, read operations only.
-      --help                 Show this message and exit.
 
 
 # Getting started
@@ -61,6 +44,24 @@ Then upload changes:
 
     s3sup upload
 
+At any point, add `--help` onto a command or subcommand for usage information:
+
+    $ s3sup upload --help
+    Usage: s3sup upload [OPTIONS]
+
+      Synchronise local static site to S3.
+
+      Use --dryrun to test behaviour without changes actually being made to S3.
+      Or use "s3sup status".
+
+    Options:
+      -v, --verbose          Output running commentary.
+      -p, --projectdir TEXT  Local s3sup project directory. Containing the
+                             s3sup.toml file.
+      -d, --dryrun           Simulate changes to be made. Don't modify files on
+                             S3, read operations only.
+      --help                 Show this message and exit.
+
 
 # Configuration file
 s3sup expects an `s3sup.toml` configuration file within the root directory of
@@ -79,7 +80,7 @@ The following example configuration:
 
  * Sets by default all objects to have a cache lifetime of two minutes
  * Sets a longer cache lifetime on PDFs and sets response header so that they
-   are downladed by the browser rather than displayed.
+   are downloaded by the browser rather than displayed.
 
 
     [aws]
@@ -112,15 +113,22 @@ Example structure:
     "/index.html",XXX,YYY
 
 
-## Backlog
+## Development backlog
 
+Documentation
  * [ ] Add guide for using s3sup with existing projects already uploaded to S3.
  * [ ] Add guide for using s3sup with new site completely from scratch.
- * [ ] Add --nodelete option and config setting
+ * [ ] Add example terminal GIFs to the getting started guide.
+
+New features
+ * [ ] Add --nodelete option and config setting.
+ * [ ] Add --force option to upload as if no remote catalogue available.
  * [ ] Allow S3 website redirects to be set.
  * [ ] Allow custom error page to be set.
- * [ ] Add example terminal GIFs to the getting started guide.
  * [ ] Parallelise S3 operations.
+
+Improvements
+ * [ ] Add python 3 type hints.
  * [ ] Sort out usage of temporary files. Make sure tests and main source don't
    spew files to `/tmp` in error conditions.
  * [ ] Standardise on using pathlib.Path where possible.
