@@ -3,10 +3,9 @@ s3sup may be better than other S3 syncing solutions (e.g. `s3sync`) if you host
 a static site on S3. Features include:
 
  * Mimetype detection, with `Content-Type` set correctly.
- * Ability to set HTTP headers on large groups of files/pages or at a granular
-   level.
+ * Set HTTP headers on groups of files/pages or individually.
  * Fast and accurate synchronisation to S3 (through maintaining a catalogue of
-   changes), reducing pain for making frequent small site changes.
+   state), reducing pain for making frequent small site changes.
 
 s3sup can be installed using `pip`:
 
@@ -54,7 +53,7 @@ Or alternatively providing the credentials as environment variables
 
 
 ## 3) Run s3sup
-First check what changes s3sup thinks needs to be made to S3:
+Check what changes s3sup thinks needs to be made to S3:
 
     s3sup status
 
@@ -115,10 +114,9 @@ Example structure:
 
 ## Backlog
 
- * [ ] Add tests for s3_project_root starting or ending with a slash, or being
-   blank.
  * [ ] Add guide for using s3sup with existing projects already uploaded to S3.
  * [ ] Add guide for using s3sup with new site completely from scratch.
+ * [ ] Add --nodelete option and config setting
  * [ ] Allow S3 website redirects to be set.
  * [ ] Allow custom error page to be set.
  * [ ] Add example terminal GIFs to the getting started guide.

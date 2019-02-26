@@ -52,7 +52,8 @@ class TestStatus(unittest.TestCase):
             ['status', '-p', project_root])
 
         self.assertEqual(0, result.exit_code)
-        self.assertIn('changes from S3', result.stdout)
+        self.assertIn('Project not uploaded before', result.stdout)
+        self.assertIn('new: 11 files', result.stdout)
 
         # Should be no objects uploaded after running status
         b = self.conn.Bucket('www.test.com')
@@ -90,7 +91,7 @@ class TestUpload(unittest.TestCase):
 
         # Check one object
         b = self.conn.Bucket('www.test.com')
-        o = b.Object('/staging/index.html')
+        o = b.Object('staging/index.html')
         self.assertInObj('Hello world!', o)
 
     @moto.mock_s3
@@ -98,7 +99,7 @@ class TestUpload(unittest.TestCase):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
         self.conn.create_bucket(Bucket='www.test.com')
         b = self.conn.Bucket('www.test.com')
-        o = b.Object('/staging/robots.txt')
+        o = b.Object('staging/robots.txt')
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         runner = CliRunner()
         result = runner.invoke(
@@ -115,7 +116,7 @@ class TestUpload(unittest.TestCase):
         self.assertEqual(0, result.exit_code)
         # Verify one of the changes.  No need to do the full whack as these are
         # tested in test_project.py.
-        o = b.Object('/staging/robots.txt')
+        o = b.Object('staging/robots.txt')
         self.assertEqual('text/plain', o.content_type)
 
     @moto.mock_s3
@@ -123,7 +124,7 @@ class TestUpload(unittest.TestCase):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
         self.conn.create_bucket(Bucket='www.test.com')
         b = self.conn.Bucket('www.test.com')
-        o = b.Object('/staging/robots.txt')
+        o = b.Object('staging/robots.txt')
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         runner = CliRunner()
         with runner.isolated_filesystem():

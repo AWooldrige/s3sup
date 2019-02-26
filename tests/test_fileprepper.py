@@ -47,3 +47,38 @@ class TestFixtureProj1(unittest.TestCase):
         self.assertEqual(f2_expected_attrs, f2.attributes())
         self.assertEqual(f1.content_hash(), f2.content_hash())
         self.assertNotEqual(f1.attributes_hash(), f2.attributes_hash())
+
+
+class TestS3PathCreation(unittest.TestCase):
+
+    def test_project_root_is_root(self):
+        self.assertEqual(
+            'products.html',
+            s3sup.fileprepper.s3_path('', 'products.html'))
+
+    def test_project_root_has_forward_slash(self):
+        self.assertEqual(
+            'products.html',
+            s3sup.fileprepper.s3_path('/', 'products.html'))
+
+    def test_project_root_is_subdir_with_leading(self):
+        self.assertEqual(
+            'staging/products.html',
+            s3sup.fileprepper.s3_path('/staging', 'products.html'))
+
+    def test_project_root_is_subdir_with_trailing(self):
+        self.assertEqual(
+            'staging/products.html',
+            s3sup.fileprepper.s3_path('/staging/', 'products.html'))
+
+    def test_project_root_is_subdir_without_trailing(self):
+        self.assertEqual(
+            'staging/products.html',
+            s3sup.fileprepper.s3_path('staging/', 'products.html'))
+
+    def test_slashes_everywhere(self):
+        self.assertEqual(
+            'staging/v1.1/disk/products.html',
+            s3sup.fileprepper.s3_path(
+                '/staging/v1.1',
+                'disk/products.html'))

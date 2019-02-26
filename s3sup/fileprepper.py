@@ -34,6 +34,14 @@ DEFAULT_CHARSET_MIMETYPES = TEXT_BASED_MIMETYPES
 HASH_READ_BLOCK = 65536
 
 
+def s3_path(s3_project_root, rel_path):
+    pr = s3_project_root.lstrip('/').rstrip('/')
+    if pr == '':
+        return '{0}{1}'.format(pr, rel_path)
+    else:
+        return '{0}/{1}'.format(pr, rel_path)
+
+
 class FilePrepper:
 
     def __init__(self, project_root, path, rules):
@@ -131,6 +139,9 @@ class FilePrepper:
             if k not in boto_attrs:
                 boto_attrs[k] = v
         return boto_attrs
+
+    def s3_path(self):
+        return s3_path(self.rules['aws']['s3_project_root'], self.path)
 
     def content_fileobj(self):
         return open(self.abspath, 'rb')

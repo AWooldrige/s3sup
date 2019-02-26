@@ -1,6 +1,8 @@
 import csv
-import click
 import enum
+import collections
+import click
+import inflect
 
 
 class ChangeReason(enum.Enum):
@@ -9,6 +11,20 @@ class ChangeReason(enum.Enum):
     ATTRIBUTES_CHANGED = 3
     DELETED = 4
     NO_CHANGE = 5
+
+
+CR_STYLE = collections.namedtuple(
+    'CR_STYLE', ['colour', 'symbol', 'shortreason', 'longreason'])
+
+CR_STYLES = {
+    ChangeReason['NEW_FILE']: CR_STYLE('yellow', '+', 'new', 'new'),
+    ChangeReason['CONTENT_CHANGED']: CR_STYLE(
+        'blue', '*', 'changed', 'content changed'),
+    ChangeReason['ATTRIBUTES_CHANGED']: CR_STYLE(
+        'cyan', '~', 'attrs', 'attributes changed'),
+    ChangeReason['DELETED']: CR_STYLE('red', '-', 'delete', 'deleted'),
+    ChangeReason['NO_CHANGE']: CR_STYLE('green', '^', 'unchanged', 'unchanged')
+}
 
 
 class Catalogue:
@@ -70,38 +86,51 @@ class Catalogue:
 
         return changes
 
-    def diff_list(self, remote_catalogue):
-        """
-        Return only paths that need changing, in a list with format:
-        TODO
-        """
-        dd = self.diff_dict(remote_catalogue)
-        dl = [(ChangeReason.NEW_FILE, p)
-              for p in dd['upload']['new_files']]
-        dl += [(ChangeReason.CONTENT_CHANGED, p)
-               for p in dd['upload']['content_changed']]
-        dl += [(ChangeReason.ATTRIBUTES_CHANGED, p)
-               for p in dd['upload']['attributes_changed']]
-        dl += [(ChangeReason.ATTRIBUTES_CHANGED, p)
-               for p in dd['upload']['attributes_changed']]
-        dl += [(ChangeReason.DELETED, p)
-               for p in dd['upload']['delete']]
-        return dl
+
+def print_diff_summary(dd, verbose=False):
+    ie = inflect.engine()
+    nc = dd['num_changes']
+    if nc <= 0:
+        click.echo('Local and S3 catalogue up to date.'.format(
+            len(dd['unchanged'])))
+        if not verbose:
+            return
+
+    click.echo('Summary of local changes to be synced to S3:')
+
+    def _p(files, change_reason):
+        num_files = len(files)
+        if num_files <= 0:
+            return
+        crs = CR_STYLES[ChangeReason[change_reason]]
+        cr_prefix = click.style(
+            '{symbol} {changereason}'.format(
+                symbol=getattr(crs, 'symbol'),
+                changereason=getattr(crs, 'longreason')),
+            fg=getattr(crs, 'colour'))
+        files_txt = '{0} {1}'.format(num_files, ie.plural('file', num_files))
+        click.echo(' {cr_prefix}: {files_txt}'.format(
+            cr_prefix=cr_prefix,
+            files_txt=files_txt))
+
+        if not verbose or change_reason == 'NO_CHANGE':
+            return
+
+        change_symbol = click.style(
+            '{symbol}'.format(symbol=getattr(crs, 'symbol')),
+            fg=getattr(crs, 'colour'))
+
+        for p in files:
+            click.echo('   {0} {1}'.format(change_symbol, p))
+
+    _p(dd['upload']['new_files'], 'NEW_FILE')
+    _p(dd['upload']['content_changed'], 'CONTENT_CHANGED')
+    _p(dd['upload']['attributes_changed'], 'ATTRIBUTES_CHANGED')
+    _p(dd['delete'], 'DELETED')
+    _p(dd['unchanged'], 'NO_CHANGE')
 
 
-def print_diff_dict(dd):
-    for p in dd['upload']['new_files']:
-        click.echo(click.style(' + [New]', fg='green') + '     {0}'.format(p))
-    for p in dd['upload']['content_changed']:
-        click.echo(
-            click.style(' * [Changed]', fg='blue') + '     {0}'.format(p))
-    for p in dd['upload']['attributes_changed']:
-        click.echo(click.style(' ^ [Attrs]', fg='cyan') + '     {0}'.format(p))
-    for p in dd['delete']:
-        click.echo(click.style(' ^ [Delete]', fg='red') + '     {0}'.format(p))
-
-
-def diff_as_list(diff):
+def change_list(diff):
     """
     Return only paths that need changing, in a list with format:
     TODO

@@ -3,6 +3,7 @@ import tempfile
 import boto3
 import botocore
 import click
+import time
 
 import s3sup.catalogue
 import s3sup.fileprepper
@@ -29,20 +30,24 @@ class Project:
                 os.path.join(local_project_root, 's3sup.toml'),
                 hint=error_text)
 
-    def _boto_session(self):
-        args = {}
+    def _boto_bucket(self):
+        s = boto3.session.Session()
+        res_args = {}
         try:
-            args['region_name'] = self.rules['aws']['region_name']
+            res_args['region_name'] = self.rules['aws']['region_name']
         except KeyError:
             pass
-        return boto3.session.Session(**args)
+        try:
+            res_args['endpoint_url'] = self.rules['aws']['s3_endpoint_url']
+        except KeyError:
+            pass
+        r = s.resource(service_name='s3', **res_args)
+        b = r.Bucket(self.rules['aws']['s3_bucket_name'])
+        return b
 
     def _obj_path(self, rel_path):
-        pr = self.rules['aws']['s3_project_root'].lstrip('/').rstrip('/')
-        if pr == '':
-            return '{0}{1}'.format(pr, rel_path)
-        else:
-            return '{0}/{1}'.format(pr, rel_path)
+        return s3sup.fileprepper.s3_path(
+            self.rules['aws']['s3_project_root'], rel_path)
 
     def _local_fs_path(self, rel_path):
         return os.path.join(self.local_project_root, rel_path)
@@ -62,12 +67,9 @@ class Project:
         return c
 
     def build_remote_catalogue(self):
-        s = self._boto_session()
-        r = s.resource('s3')
-        b = r.Bucket(self.rules['aws']['s3_bucket_name'])
+        b = self._boto_bucket()
         rmt_cat_path = self._obj_path('.s3sup.catalogue.csv')
         f = b.Object(rmt_cat_path)
-
         c = s3sup.catalogue.Catalogue()
 
         hndl, tmpp = tempfile.mkstemp()
@@ -75,6 +77,12 @@ class Project:
         try:
             f.download_file(tmpp)
             c.from_csv(tmpp)
+        except botocore.exceptions.NoCredentialsError:
+            raise click.UsageError(
+                'Cannot find AWS credentials.\n -> Configure AWS credentials '
+                ' using any mthod that the underlying boto3 library supports:'
+                '\n -> https://boto3.amazonaws.com/v1/documentation/'
+                'api/latest/guide/configuration.html')
         except botocore.exceptions.ClientError:
             click.echo('Project not uploaded before (no {0} on S3).'.format(
                 rmt_cat_path))
@@ -93,10 +101,9 @@ class Project:
         return self._diff
 
     def sync(self):
-        changes = self.calculate_diff()
+        changes = s3sup.catalogue.change_list(self.calculate_diff())
 
-        if changes['num_changes'] <= 0:
-            click.echo('Local and remote project up-to-date')
+        if len(changes) <= 0:
             return changes
 
         if self.dryrun:
@@ -104,45 +111,52 @@ class Project:
                 'Not making any changes as this is a dryrun.', fg='blue'))
             return changes
 
-        s = self._boto_session()
-        r = s.resource('s3')
-        b = r.Bucket(self.rules['aws']['s3_bucket_name'])
+        b = self._boto_bucket()
 
         def _prepped_file_and_obj(path):
             fp = s3sup.fileprepper.FilePrepper(
-                self.local_project_root, p, self.rules)
-            o = b.Object(self._obj_path(p))
+                self.local_project_root, path, self.rules)
+            o = b.Object(fp.s3_path())
             return (fp, o)
 
-        for p in changes['upload']['new_files']:
-            click.echo('Uploading new file: {0}'.format(p))
-            fp, o = _prepped_file_and_obj(p)
-            with fp.content_fileobj() as lf:
-                o.put(Body=lf, **fp.attributes_as_boto_args())
+        def display_current(item):
+            if item is None:
+                return ''
+            cr, p = item
+            s3_path = s3sup.fileprepper.s3_path(
+                self.rules['aws']['s3_project_root'], p)
 
-        for p in changes['upload']['content_changed']:
-            click.echo('Uploading as content changed: {0}'.format(p))
-            fp, o = _prepped_file_and_obj(p)
-            with fp.content_fileobj() as lf:
-                o.put(Body=lf, **fp.attributes_as_boto_args())
+            crs = s3sup.catalogue.CR_STYLES[cr]
+            change_symbol = click.style(
+                '{symbol}'.format(symbol=getattr(crs, 'symbol')),
+                fg=getattr(crs, 'colour'))
 
-        for p in changes['upload']['attributes_changed']:
-            click.echo('Changing attributes: {0}'.format(p))
-            fp, o = _prepped_file_and_obj(p)
-            o.copy_from(
-                CopySource={
-                    'Bucket': self.rules['aws']['s3_bucket_name'],
-                    'Key': self._obj_path(p)},
-                MetadataDirective='REPLACE',
-                TaggingDirective='REPLACE',
-                **fp.attributes_as_boto_args())
+            return ' {0} {1}'.format(change_symbol, s3_path)
 
-        for p in changes['delete']:
-            click.echo('Deleting: {0}'.format(p))
-            fp, o = _prepped_file_and_obj(p)
-            o.delete()
+        with click.progressbar(changes, label='Syncing to S3',
+                               item_show_func=display_current) as bar:
+            for cr, p in bar:
+                fp, o = _prepped_file_and_obj(p)
+                if cr == s3sup.catalogue.ChangeReason['NEW_FILE']:
+                    with fp.content_fileobj() as lf:
+                        o.put(Body=lf, **fp.attributes_as_boto_args())
 
-        click.echo('Updating remote catalogue')
+                if cr == s3sup.catalogue.ChangeReason['CONTENT_CHANGED']:
+                    with fp.content_fileobj() as lf:
+                        o.put(Body=lf, **fp.attributes_as_boto_args())
+
+                if cr == s3sup.catalogue.ChangeReason['ATTRIBUTES_CHANGED']:
+                    o.copy_from(
+                        CopySource={
+                            'Bucket': self.rules['aws']['s3_bucket_name'],
+                            'Key': self._obj_path(p)},
+                        MetadataDirective='REPLACE',
+                        TaggingDirective='REPLACE',
+                        **fp.attributes_as_boto_args())
+
+                if cr == s3sup.catalogue.ChangeReason['DELETED']:
+                    o.delete()
+
         c = self.build_catalogue()
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)

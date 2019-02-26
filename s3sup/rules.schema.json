@@ -19,9 +19,14 @@
                 "s3_project_root": {
                     "description": "S3 prefix under where to place the project",
                     "type": "string"
+                },
+                "s3_endpoint_url": {
+                    "description": "S3 prefix under where to place the project",
+                    "type": "string",
+                    "minLength": 1
                 }
             },
-            "required": ["region_name", "s3_bucket_name", "s3_project_root"],
+            "required": ["region_name", "s3_bucket_name"],
             "additionalProperties": false
         },
         "path_specific": {

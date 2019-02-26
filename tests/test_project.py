@@ -53,7 +53,7 @@ class TestProject(unittest.TestCase):
             MODULE_DIR, 'expected_cat_fixture_proj_1.csv')
         with open(exp_csv_p, 'rb') as exp_csv_f:
             b.put_object(
-                Key='/staging/.s3sup.catalogue.csv',
+                Key='staging/.s3sup.catalogue.csv',
                 ACL='private',
                 Body=exp_csv_f)
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
@@ -77,7 +77,7 @@ class TestProjectSyncNoChanges(unittest.TestCase):
         pn.sync()
 
         b = self.conn.Bucket('www.test.com')
-        o = b.Object('/staging/index.html')
+        o = b.Object('staging/index.html')
         self.assertEqual('private; max-age=400', o.cache_control)
 
 
@@ -104,33 +104,33 @@ class TestProjectSyncProjectChanges(unittest.TestCase):
         pn.sync()
 
         b = self.conn.Bucket('www.test.com')
-        o = b.Object('/staging/index.html')
+        o = b.Object('staging/index.html')
         self.assertEqual('private; max-age=400', o.cache_control)
 
         # Check new uploaded file
-        o = b.Object('/staging/contact/index.html')
+        o = b.Object('staging/contact/index.html')
         self.assertEqual('private; max-age=400', o.cache_control)
 
         # Check file that had contents modified
-        o = b.Object('/staging/products.html')
+        o = b.Object('staging/products.html')
         self.assertInObj('A new additional product!', o)
 
         # Check file that had content and attrs modified
-        o = b.Object('/staging/assets/stylesheet.css')
+        o = b.Object('staging/assets/stylesheet.css')
         self.assertInObj('padding: 1em;', o)
         self.assertEqual('max-age=1212', o.cache_control)
 
         # Check file that had attributes changed
-        o = b.Object('/staging/robots.txt')
+        o = b.Object('staging/robots.txt')
         self.assertInObj('User-agent: *', o)
         self.assertEqual('text/plain', o.content_type)
 
         # Check file that had attributes removed
-        o = b.Object('/staging/white-paper.pdf')
+        o = b.Object('staging/white-paper.pdf')
         self.assertEqual(None, o.content_disposition)
 
         # Check file that had been deleted
-        o = b.Object('/staging/assets/landscape.62.png')
+        o = b.Object('staging/assets/landscape.62.png')
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
         with self.assertRaises(botocore.exceptions.ClientError):

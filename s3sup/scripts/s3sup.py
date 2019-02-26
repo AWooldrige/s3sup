@@ -101,8 +101,7 @@ def status(projectdir, verbose):
     # Shouldn't be calling anything that needs dryrun, but just to be safe!
     p = s3sup.project.Project(projectdir, dryrun=True)
     diff = p.calculate_diff()
-    click.echo('{0} changes from S3 catalogue:'.format(diff['num_changes']))
-    s3sup.catalogue.print_diff_dict(diff)
+    s3sup.catalogue.print_diff_summary(diff, verbose=True)
 
 
 @cli.command()
@@ -119,8 +118,7 @@ def upload(projectdir, verbose, dryrun):
     """
     p = s3sup.project.Project(projectdir, dryrun=dryrun)
     diff = p.calculate_diff()
-    click.echo('{0} changes required:'.format(diff['num_changes']))
-    s3sup.catalogue.print_diff_dict(diff)
+    s3sup.catalogue.print_diff_summary(diff, verbose=verbose)
     p.sync()
 
 
