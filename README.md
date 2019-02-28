@@ -14,7 +14,7 @@ s3sup can be installed using `pip`:
 
 Quick demo for a new site created using the "Getting started" guide below:
 
-<p align="center"><img src="/docs/term/demo.gif?raw=true"/></p>
+<p align="center"><img src="/docs/termrecs/render_s3supdemo_newsite.gif?raw=true"/></p>
 
 # Getting started
 
