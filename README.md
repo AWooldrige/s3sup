@@ -1,4 +1,4 @@
-# s3sup - S3 static site uploader
+# s3sup - S3 site uploader
 s3sup may be better than other S3 syncing solutions (e.g. `s3sync`) if you host
 a static site on S3. Features include:
 
@@ -6,12 +6,15 @@ a static site on S3. Features include:
  * Set HTTP headers (e.g. `Cache-Control`) on groups of files/pages or
    individually.
  * Fast and efficient synchronisation to S3 (through maintaining a catalogue of
-   state), reducing pain for making frequent small site changes.
+   state), reducing pain when making frequent small site changes.
 
 s3sup can be installed using `pip`:
 
     pip install s3sup
 
+Quick demo for a new site created using the "Getting started" guide below:
+
+<p align="center"><img src="/docs/term/demo.gif?raw=true"/></p>
 
 # Getting started
 
@@ -82,6 +85,7 @@ The following example configuration:
  * Sets a longer cache lifetime on PDFs and sets response header so that they
    are downloaded by the browser rather than displayed.
 
+s3sup.toml:
 
     [aws]
     region_name = 'eu-west-1'
@@ -128,6 +132,7 @@ New features
  * [ ] Parallelise S3 operations.
 
 Improvements
+ * [ ] Detect when S3 bucket doesn't exist. Stacktrace at the moment.
  * [ ] Add python 3 type hints.
  * [ ] Sort out usage of temporary files. Make sure tests and main source don't
    spew files to `/tmp` in error conditions.
