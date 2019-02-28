@@ -93,12 +93,9 @@ def init(projectdir, verbose):
 @common_options
 def status(projectdir, verbose):
     """
-    Check what changes need to be made to get local static site in sync with
-    the S3 copy.
-
-    This command is read-only and will not make any changes to S3.
+    Show S3 changes required. Read-only.
     """
-    click.echo('S3 Site UPloader (s3sup):')
+    click.echo('S3 site uploader. Using:')
     # Shouldn't be calling anything that needs dryrun, but just to be safe!
     p = s3sup.project.Project(projectdir, dryrun=True, verbose=verbose)
     if verbose or projectdir != '.':
