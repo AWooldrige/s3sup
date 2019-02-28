@@ -11,4 +11,4 @@ if __name__ == '__main__':
         region_name='eu-west-1',
         endpoint_url='http://localhost:5000'
     )
-    c.create_bucket(Bucket='www.test.com')
+    c.create_bucket(Bucket='www.example.com')

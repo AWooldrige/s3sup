@@ -12,8 +12,9 @@ import s3sup.rules
 
 class Project:
 
-    def __init__(self, local_project_root, dryrun=False):
+    def __init__(self, local_project_root, dryrun=False, verbose=True):
         self.dryrun = dryrun
+        self.verbose = verbose
         self.local_project_root = local_project_root
         try:
             self.rules = s3sup.rules.load_rules(os.path.join(
@@ -46,8 +47,12 @@ class Project:
         return b
 
     def _obj_path(self, rel_path):
-        return s3sup.fileprepper.s3_path(
-            self.rules['aws']['s3_project_root'], rel_path)
+        root = ''
+        try:
+            root = self.rules['aws']['s3_project_root']
+        except KeyError:
+            pass
+        return s3sup.fileprepper.s3_path(root, rel_path)
 
     def _local_fs_path(self, rel_path):
         return os.path.join(self.local_project_root, rel_path)
@@ -84,8 +89,10 @@ class Project:
                 '\n -> https://boto3.amazonaws.com/v1/documentation/'
                 'api/latest/guide/configuration.html')
         except botocore.exceptions.ClientError:
-            click.echo('Project not uploaded before (no {0} on S3).'.format(
-                rmt_cat_path))
+            if self.verbose:
+                click.echo(
+                    'Project not uploaded before (no {0} on S3).'.format(
+                        rmt_cat_path))
             pass
         os.remove(tmpp)
         return c
@@ -123,8 +130,7 @@ class Project:
             if item is None:
                 return ''
             cr, p = item
-            s3_path = s3sup.fileprepper.s3_path(
-                self.rules['aws']['s3_project_root'], p)
+            s3_path = self._obj_path(p)
 
             crs = s3sup.catalogue.CR_STYLES[cr]
             change_symbol = click.style(

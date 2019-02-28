@@ -98,8 +98,28 @@ def status(projectdir, verbose):
 
     This command is read-only and will not make any changes to S3.
     """
+    click.echo('S3 Site UPloader (s3sup):')
     # Shouldn't be calling anything that needs dryrun, but just to be safe!
-    p = s3sup.project.Project(projectdir, dryrun=True)
+    p = s3sup.project.Project(projectdir, dryrun=True, verbose=verbose)
+    if verbose or projectdir != '.':
+        click.echo(' * Local project directory: {0}'.format(projectdir))
+
+    try:
+        s3_root = p.rules['aws']['s3_project_root'].strip()
+    except KeyError:
+        s3_root = '/'
+    s3_root = '/' if s3_root == '' else s3_root
+
+    if s3_root != '/':
+        s3_root = '/{0}/'.format(s3_root.lstrip('/').rstrip('/'))
+
+    if verbose:
+        click.echo(' * AWS region: {0}'.format(p.rules['aws']['region_name']))
+
+    click.echo(' * S3 bucket: {0}{1}'.format(
+        p.rules['aws']['s3_bucket_name'], s3_root))
+
+    click.echo('')
     diff = p.calculate_diff()
     s3sup.catalogue.print_diff_summary(diff, verbose=True)
 
@@ -116,10 +136,11 @@ def upload(projectdir, verbose, dryrun):
     Use --dryrun to test behaviour without changes actually being made to S3.
     Or use "s3sup status".
     """
-    p = s3sup.project.Project(projectdir, dryrun=dryrun)
+    p = s3sup.project.Project(projectdir, dryrun=dryrun, verbose=verbose)
     diff = p.calculate_diff()
     s3sup.catalogue.print_diff_summary(diff, verbose=verbose)
     p.sync()
+    click.echo(click.style('Done!', fg='green'))
 
 
 if __name__ == '__main__':

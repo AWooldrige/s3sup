@@ -141,7 +141,12 @@ class FilePrepper:
         return boto_attrs
 
     def s3_path(self):
-        return s3_path(self.rules['aws']['s3_project_root'], self.path)
+        root = ''
+        try:
+            root = self.rules['aws']['s3_project_root']
+        except KeyError:
+            pass
+        return s3_path(root, self.path)
 
     def content_fileobj(self):
         return open(self.abspath, 'rb')

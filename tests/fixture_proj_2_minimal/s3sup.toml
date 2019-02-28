@@ -1,0 +1,3 @@
+[aws]
+region_name = 'eu-west-1'
+s3_bucket_name = 'www.example.com'

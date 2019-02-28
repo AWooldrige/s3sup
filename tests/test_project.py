@@ -37,7 +37,7 @@ class TestProject(unittest.TestCase):
     @moto.mock_s3
     def test_build_non_existant_remote_catalogue(self):
         conn = boto3.resource('s3', region_name='eu-west-1')
-        conn.create_bucket(Bucket='www.test.com')
+        conn.create_bucket(Bucket='www.example.com')
 
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         p = Project(project_root)
@@ -47,8 +47,8 @@ class TestProject(unittest.TestCase):
     @moto.mock_s3
     def test_build_existing_catalogue(self):
         conn = boto3.resource('s3', region_name='eu-west-1')
-        conn.create_bucket(Bucket='www.test.com')
-        b = conn.Bucket('www.test.com')
+        conn.create_bucket(Bucket='www.example.com')
+        b = conn.Bucket('www.example.com')
         exp_csv_p = os.path.join(
             MODULE_DIR, 'expected_cat_fixture_proj_1.csv')
         with open(exp_csv_p, 'rb') as exp_csv_f:
@@ -67,7 +67,7 @@ class TestProjectSyncNoChanges(unittest.TestCase):
     @moto.mock_s3
     def test_no_project_changes(self):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
-        self.conn.create_bucket(Bucket='www.test.com')
+        self.conn.create_bucket(Bucket='www.example.com')
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         p = Project(project_root)
         p.sync()
@@ -76,7 +76,7 @@ class TestProjectSyncNoChanges(unittest.TestCase):
         pn = Project(project_root_n)
         pn.sync()
 
-        b = self.conn.Bucket('www.test.com')
+        b = self.conn.Bucket('www.example.com')
         o = b.Object('staging/index.html')
         self.assertEqual('private; max-age=400', o.cache_control)
 
@@ -92,9 +92,21 @@ class TestProjectSyncProjectChanges(unittest.TestCase):
         os.remove(tmpp)
 
     @moto.mock_s3
+    def test_fixture_proj_2_minimal(self):
+        self.conn = boto3.resource('s3', region_name='eu-west-1')
+        self.conn.create_bucket(Bucket='www.example.com')
+        project_root = os.path.join(MODULE_DIR, 'fixture_proj_2_minimal')
+        p = Project(project_root)
+        p.sync()
+
+        b = self.conn.Bucket('www.example.com')
+        o = b.Object('index.html')
+        self.assertInObj('I like it minimal.', o)
+
+    @moto.mock_s3
     def test_multiple_project_changes(self):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
-        self.conn.create_bucket(Bucket='www.test.com')
+        self.conn.create_bucket(Bucket='www.example.com')
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         p = Project(project_root)
         p.sync()
@@ -103,7 +115,7 @@ class TestProjectSyncProjectChanges(unittest.TestCase):
         pn = Project(project_root_n)
         pn.sync()
 
-        b = self.conn.Bucket('www.test.com')
+        b = self.conn.Bucket('www.example.com')
         o = b.Object('staging/index.html')
         self.assertEqual('private; max-age=400', o.cache_control)
 

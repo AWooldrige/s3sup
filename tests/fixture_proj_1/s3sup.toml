@@ -1,6 +1,6 @@
 [aws]
 region_name = 'eu-west-1'
-s3_bucket_name = 'www.test.com'
+s3_bucket_name = 'www.example.com'
 s3_project_root = '/staging/'
 
 [[path_specific]]
