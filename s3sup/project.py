@@ -3,7 +3,6 @@ import tempfile
 import boto3
 import botocore
 import click
-import time
 
 import s3sup.catalogue
 import s3sup.fileprepper

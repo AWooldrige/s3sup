@@ -1,4 +1,4 @@
-# s3sup - S3 site uploader
+# s3sup - static site uploader for Amazon S3
 s3sup may be better than other S3 syncing solutions (e.g. `s3sync`) if you host
 a static site on S3. Features include:
 
@@ -8,7 +8,7 @@ a static site on S3. Features include:
  * Fast and efficient synchronisation to S3 (through maintaining a catalogue of
    state), reducing pain when making frequent small site changes.
 
-s3sup can be installed using `pip`:
+s3sup can be installed using `pip`. Please note `s3sup` supports Python 3 only:
 
     pip install s3sup
 
