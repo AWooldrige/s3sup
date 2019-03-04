@@ -61,17 +61,15 @@ An `[aws]` section, telling s3sup where to find your S3 bucket:
     s3_bucket_name = '' # E.g. 'mys3websitebucketname'
     s3_project_root = ''  # Root location for project within S3, e.g. 'staging/'
 
-### `[path]` section
+### `[[path_specific]]` section
 One or more `[[path_specific]]` sections. Each `[[path_specific]]` section must
 contain a `path` for which the following directives in that section apply to.
 The `path` can be the relative path to a file within the local directory, or a
 regular expression matching multiple paths.
 
-If multiple `[[path_specific]]` entries match the same path, the sections are
-applied in defined order, with later sections combining and overriding
-directives from earlier sections. Directives are combined from all matching
-`[[path_specific]]` entries, with the last matching `[[path_specific]]`
-directive entry winning for equivalent directive keys.
+If multiple `[[path_specific]]` entries match the same path, directives are
+combined from all matching `[[path_specific]]` entries, with the last matching
+`[[path_specific]]` directive entry winning for equivalent directive keys.
 
 Along with `path`, the following directives can be set:
  * `ACL`: One of: private, public-read, authenticated-read. Default
