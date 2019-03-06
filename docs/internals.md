@@ -21,13 +21,18 @@ Documentation
 New features
  * [ ] Add --nodelete option and config setting.
  * [ ] Add --force option to upload as if no remote catalogue available.
+ * [ ] Add `s3sup attrs <local_fpath>` which displays attributes to be set
+   and final S3 path.
  * [ ] Allow S3 website redirects to be set.
  * [ ] Allow custom error page to be set.
+ * [ ] Progress bar for individual large files?
  * [ ] Parallelise S3 operations.
 
 Improvements
  * [ ] Detect when S3 bucket doesn't exist. Stacktrace at the moment.
  * [ ] Add python 3 type hints.
+ * [ ] Add retry to S3 uploads
+ * [ ] Find  best practice way to memoize function return values in FilePrepper
  * [ ] Sort out usage of temporary files. Make sure tests and main source don't
    spew files to `/tmp` in error conditions.
  * [ ] Standardise on using pathlib.Path where possible.

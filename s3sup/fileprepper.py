@@ -46,12 +46,23 @@ class FilePrepper:
 
     def __init__(self, project_root, path, rules):
         self.project_root = project_root
+
+        # Relative to project root. E.g. 'index.html'.
         self.path = path
-        self.abspath = os.path.abspath(os.path.join(project_root, path))
+
+        # Absolute path. E.g. '/home/jsmith/proj_1/index.html'
+        self.path_local_abs = os.path.abspath(os.path.join(
+            project_root, path))
+
         self.rules = rules
         self.path_directives = s3sup.rules.directives_for_path(
             self.path, self.rules)
 
+    def attributes(self):
+        try:
+            return self._attributes
+        except AttributeError:
+            pass
         attrs = {}
         fext = pathlib.Path(self.path).suffix
         mime_type, encoding = mimetypes.guess_type(self.path)
@@ -109,12 +120,10 @@ class FilePrepper:
             except KeyError:
                 continue
         # Set as a sorted dict
-        # self.attrs = {k: attrs[k] for k in sorted(attrs)}
-        self.attrs = collections.OrderedDict(
+        # self.attributes() = {k: attrs[k] for k in sorted(attrs)}
+        self._attributes = collections.OrderedDict(
             sorted(attrs.items(), key=lambda t: t[0]))
-
-    def attributes(self):
-        return self.attrs
+        return self._attributes
 
     def attributes_as_boto_args(self):
         key_map = {
@@ -128,7 +137,7 @@ class FilePrepper:
             'Content-Language': 'ContentLanguage',
             'S3Metadata': 'Metadata'
         }
-        boto_attrs = {key_map[k]: v for k, v in self.attrs.items()}
+        boto_attrs = {key_map[k]: v for k, v in self.attributes().items()}
 
         # Defaults for if none set
         defaults = {
@@ -149,7 +158,7 @@ class FilePrepper:
         return s3_path(root, self.path)
 
     def content_fileobj(self):
-        return open(self.abspath, 'rb')
+        return open(self.path_local_abs, 'rb')
 
     def content_hash(self):
         try:
@@ -171,7 +180,7 @@ class FilePrepper:
         except AttributeError:
             pass
         self._attributes_hash = hashlib.sha256(
-            pickle.dumps(self.attrs)).hexdigest()
+            pickle.dumps(self.attributes())).hexdigest()
         return self._attributes_hash
 
     def hashes(self):

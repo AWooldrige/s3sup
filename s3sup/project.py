@@ -46,7 +46,7 @@ class Project:
         b = r.Bucket(self.rules['aws']['s3_bucket_name'])
         return b
 
-    def _file_prepper_wrapped(self, path):
+    def file_prepper_wrapped(self, path):
         try:
             return self._fp_cache[path]
         except KeyError:
@@ -78,7 +78,7 @@ class Project:
                 abs_path = os.path.join(root, f)
                 rel_path = os.path.relpath(
                     abs_path, start=self.local_project_root)
-                fp = self._file_prepper_wrapped(rel_path)
+                fp = self.file_prepper_wrapped(rel_path)
                 self._local_cat.add_file(
                     rel_path, fp.content_hash(), fp.attributes_hash())
         return self._local_cat
@@ -133,7 +133,7 @@ class Project:
         b = self._boto_bucket()
 
         def _prepped_file_and_obj(path):
-            fp = self._file_prepper_wrapped(path)
+            fp = self.file_prepper_wrapped(path)
             o = b.Object(fp.s3_path())
             return (fp, o)
 
