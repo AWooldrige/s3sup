@@ -29,6 +29,7 @@ class Project:
             raise click.FileError(
                 os.path.join(local_project_root, 's3sup.toml'),
                 hint=error_text)
+        self._fp_cache = {}
 
     def _boto_bucket(self):
         s = boto3.session.Session()
@@ -45,6 +46,14 @@ class Project:
         b = r.Bucket(self.rules['aws']['s3_bucket_name'])
         return b
 
+    def _file_prepper_wrapped(self, path):
+        try:
+            return self._fp_cache[path]
+        except KeyError:
+            self._fp_cache[path] = s3sup.fileprepper.FilePrepper(
+                self.local_project_root, path, self.rules)
+        return self._fp_cache[path]
+
     def _obj_path(self, rel_path):
         root = ''
         try:
@@ -56,8 +65,12 @@ class Project:
     def _local_fs_path(self, rel_path):
         return os.path.join(self.local_project_root, rel_path)
 
-    def build_catalogue(self):
-        c = s3sup.catalogue.Catalogue()
+    def local_catalogue(self):
+        try:
+            return self._local_cat
+        except AttributeError:
+            pass
+        self._local_cat = s3sup.catalogue.Catalogue()
         for root, dirs, files in os.walk(self.local_project_root):
             for f in files:
                 if f == 's3sup.toml':
@@ -65,22 +78,26 @@ class Project:
                 abs_path = os.path.join(root, f)
                 rel_path = os.path.relpath(
                     abs_path, start=self.local_project_root)
-                fp = s3sup.fileprepper.FilePrepper(
-                    self.local_project_root, rel_path, self.rules)
-                c.add_file(rel_path, fp.content_hash(), fp.attributes_hash())
-        return c
+                fp = self._file_prepper_wrapped(rel_path)
+                self._local_cat.add_file(
+                    rel_path, fp.content_hash(), fp.attributes_hash())
+        return self._local_cat
 
-    def build_remote_catalogue(self):
+    def remote_catalogue(self):
+        try:
+            return self._remote_cat
+        except AttributeError:
+            pass
         b = self._boto_bucket()
         rmt_cat_path = self._obj_path('.s3sup.catalogue.csv')
         f = b.Object(rmt_cat_path)
-        c = s3sup.catalogue.Catalogue()
+        self._remote_cat = s3sup.catalogue.Catalogue()
 
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
         try:
             f.download_file(tmpp)
-            c.from_csv(tmpp)
+            self._remote_cat.from_csv(tmpp)
         except botocore.exceptions.NoCredentialsError:
             raise click.UsageError(
                 'Cannot find AWS credentials.\n -> Configure AWS credentials '
@@ -94,17 +111,13 @@ class Project:
                         rmt_cat_path))
             pass
         os.remove(tmpp)
-        return c
+        return self._remote_cat
 
     def calculate_diff(self):
-        try:
-            return self._diff
-        except AttributeError:
-            pass
-        local_cat = self.build_catalogue()
-        remote_cat = self.build_remote_catalogue()
-        self._diff = local_cat.diff_dict(remote_cat)
-        return self._diff
+        local_cat = self.local_catalogue()
+        remote_cat = self.remote_catalogue()
+        diff = local_cat.diff_dict(remote_cat)
+        return diff
 
     def sync(self):
         changes = s3sup.catalogue.change_list(self.calculate_diff())
@@ -120,8 +133,7 @@ class Project:
         b = self._boto_bucket()
 
         def _prepped_file_and_obj(path):
-            fp = s3sup.fileprepper.FilePrepper(
-                self.local_project_root, path, self.rules)
+            fp = self._file_prepper_wrapped(path)
             o = b.Object(fp.s3_path())
             return (fp, o)
 
@@ -162,7 +174,7 @@ class Project:
                 if cr == s3sup.catalogue.ChangeReason['DELETED']:
                     o.delete()
 
-        c = self.build_catalogue()
+        c = self.local_catalogue()
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
         c.to_csv(tmpp)
