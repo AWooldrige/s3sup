@@ -16,6 +16,7 @@ class TestFixtureProj1(unittest.TestCase):
         f = s3sup.fileprepper.FilePrepper(
             self.project_root, 'products.html', self.rules)
         expected_attrs = {
+            'ACL': 'public-read',
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'private; max-age=400'
         }
@@ -25,6 +26,7 @@ class TestFixtureProj1(unittest.TestCase):
         f = s3sup.fileprepper.FilePrepper(
             self.project_root, 'assets/landscape.62.png', self.rules)
         expected_attrs = {
+            'ACL': 'public-read',
             'Content-Type': 'image/png',
             'Cache-Control': 'max-age=12000'
         }
@@ -34,6 +36,7 @@ class TestFixtureProj1(unittest.TestCase):
         f1 = s3sup.fileprepper.FilePrepper(
             self.project_root, 'about-us/index.html', self.rules)
         f1_expected_attrs = {
+            'ACL': 'public-read',
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'private; max-age=400'
         }
@@ -41,6 +44,7 @@ class TestFixtureProj1(unittest.TestCase):
         f2 = s3sup.fileprepper.FilePrepper(
             self.project_root, 'about-us/duplicate.html', self.rules)
         f2_expected_attrs = {
+            'ACL': 'public-read',
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'max-age=14000'
         }

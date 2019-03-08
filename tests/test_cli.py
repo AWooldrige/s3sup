@@ -186,3 +186,39 @@ class TestUpload(unittest.TestCase):
 
         # Should be no objects uploaded
         self.assertEqual([], [o for o in b.objects.all()])
+
+
+class TestInspect(unittest.TestCase):
+    """Inspect commands should run fine without S3 connection"""
+
+    @moto.mock_s3
+    def test_normal_use_case_individual_file_in_current_dir(self):
+        project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            new_projdir = os.path.join(os.getcwd(), 'proj')
+            shutil.copytree(project_root, new_projdir)
+            os.chdir(new_projdir)
+            result = runner.invoke(
+                s3sup.scripts.s3sup.cli,
+                ['inspect', 'robots.txt'])
+            self.assertEqual(0, result.exit_code)
+            self.assertIn('robots.txt', result.stdout)
+            self.assertIn('Cache-Control: private; max-age=400', result.stdout)
+
+    def test_with_different_proj_dir_and_non_existing_file(self):
+        project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
+        runner = CliRunner(mix_stderr=False)
+        result = runner.invoke(
+            s3sup.scripts.s3sup.cli,
+            ['inspect', '-p', project_root, 'robots.txt', 'non_existant.file',
+             'white-paper.pdf'],
+            mix_stderr=False)
+        self.assertEqual(0, result.exit_code)
+        self.assertIn('robots.txt', result.stdout)
+        self.assertIn('Cache-Control: private; max-age=400', result.stdout)
+
+        self.assertIn('non_existant.file', result.stderr)
+
+        self.assertIn('white-paper.pdf', result.stdout)
+        self.assertIn('StorageClass: REDUCED_REDUNDANCY', result.stdout)

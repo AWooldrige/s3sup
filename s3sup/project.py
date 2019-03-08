@@ -1,4 +1,5 @@
 import os
+import functools
 import tempfile
 import boto3
 import botocore
@@ -7,6 +8,7 @@ import click
 import s3sup.catalogue
 import s3sup.fileprepper
 import s3sup.rules
+import s3sup.utils
 
 
 class Project:
@@ -65,12 +67,9 @@ class Project:
     def _local_fs_path(self, rel_path):
         return os.path.join(self.local_project_root, rel_path)
 
+    @functools.lru_cache(maxsize=8)
     def local_catalogue(self):
-        try:
-            return self._local_cat
-        except AttributeError:
-            pass
-        self._local_cat = s3sup.catalogue.Catalogue()
+        local_cat = s3sup.catalogue.Catalogue()
         for root, dirs, files in os.walk(self.local_project_root):
             for f in files:
                 if f == 's3sup.toml':
@@ -79,25 +78,22 @@ class Project:
                 rel_path = os.path.relpath(
                     abs_path, start=self.local_project_root)
                 fp = self.file_prepper_wrapped(rel_path)
-                self._local_cat.add_file(
+                local_cat.add_file(
                     rel_path, fp.content_hash(), fp.attributes_hash())
-        return self._local_cat
+        return local_cat
 
+    @functools.lru_cache(maxsize=8)
     def remote_catalogue(self):
-        try:
-            return self._remote_cat
-        except AttributeError:
-            pass
         b = self._boto_bucket()
         rmt_cat_path = self._obj_path('.s3sup.catalogue.csv')
         f = b.Object(rmt_cat_path)
-        self._remote_cat = s3sup.catalogue.Catalogue()
+        remote_cat = s3sup.catalogue.Catalogue()
 
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
         try:
             f.download_file(tmpp)
-            self._remote_cat.from_csv(tmpp)
+            remote_cat.from_csv(tmpp)
         except botocore.exceptions.NoCredentialsError:
             raise click.UsageError(
                 'Cannot find AWS credentials.\n -> Configure AWS credentials '
@@ -111,7 +107,7 @@ class Project:
                         rmt_cat_path))
             pass
         os.remove(tmpp)
-        return self._remote_cat
+        return remote_cat
 
     def calculate_diff(self):
         local_cat = self.local_catalogue()
@@ -183,3 +179,21 @@ class Project:
             o.put(Body=lf, ACL='private')
         os.remove(tmpp)
         return changes
+
+    def print_summary(self):
+        lcl_dir = click.format_filename(self.local_project_root)
+        if lcl_dir == '.':
+            lcl_dir += ' (current dir)'
+
+        s3p = 's3://{0}/'.format(self.rules['aws']['s3_bucket_name'])
+        s3pr = self.rules['aws']['s3_project_root'].lstrip('/').rstrip('/')
+        if len(s3pr) > 0:
+            s3p += s3pr
+
+        to_print = {
+            'Local project dir': lcl_dir,
+            'AWS region': self.rules['aws']['region_name'],
+            'S3 bucket': s3p
+        }
+        s3sup.utils.pprint_h1('PROJECT INFORMATION')
+        s3sup.utils.pprint_dict(to_print)

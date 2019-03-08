@@ -87,6 +87,28 @@ Along with `path`, the following directives can be set:
  * `Content-Encoding`: Set HTTP header value. Only override this if absolutely
    necessary, s3sup encoding detection normally covers this.
 
+You can use `s3sup inspect <filename>` at any time to see the attributes that
+s3sup has calculated from your configuration settings:
+
+    $ s3sup inspect index.html
+    ************************************************************
+    * PROJECT INFORMATION
+    ************************************************************
+      - Local project dir: . (current dir)
+      - AWS region: eu-west-1
+      - S3 bucket: s3://www.example.com/test
+
+    File: index.html
+    ****************
+      - Local path: /home/awooldrige/www.example.com/index.html
+      - S3 path: s3://www.example.com/test/index.html
+      - Attributes:
+        - ACL: public-read
+        - Cache-Control: private; max-age=300
+        - Content-Type: text/html; charset=utf-8
+      - content hash: e1086538d9d7f9e458c0890b17e768f7ace099b9df922de65fb0009865784284
+      - Attributes hash: f5a7cc18a936c3a406d958ea1d64dd8e760bf3d9cabb830810089f0a44fe8ab6
+
 
 ### Example configuration file
 The following example configuration:

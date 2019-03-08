@@ -122,6 +122,25 @@ def status(projectdir, verbose):
 
 
 @cli.command()
+@click.argument('local_file', nargs=-1)
+@common_options
+def inspect(local_file, projectdir, verbose):
+    """
+    Show calculated attributes (e.g. headers) before upload.
+    """
+    p = s3sup.project.Project(projectdir, dryrun=True, verbose=verbose)
+    p.print_summary()
+    for f in local_file:
+        click.echo()
+        try:
+            fp = p.file_prepper_wrapped(f)
+            fp.print_summary()
+        except FileNotFoundError:
+            msg = 'Could not open: {0}'.format(click.format_filename(f))
+            click.echo(click.style(msg, fg='red'), err=True)
+
+
+@cli.command()
 @common_options
 @click.option(
     '-d', '--dryrun', is_flag=True,
