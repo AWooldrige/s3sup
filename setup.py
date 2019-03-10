@@ -32,7 +32,7 @@ setup(
     install_requires=[
         'boto3>=1,<2',
         'click>=7,<8',
-        'inflect>=2.1,<3',
+        'inflect>=2,<3',
         'jsonschema>=2,<3',
         'requests>=2.21,<3',  # Workaround as boto3 likes latest requests
         'toml>=0.10,<1',
