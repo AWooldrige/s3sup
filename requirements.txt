@@ -1,9 +1,9 @@
-boto3>=1,<2
-click>=7,<8
-inflect>=2.1,<3
-jsonschema>=2,<3
-requests>=2.21,<3
+boto3>=1,<3
+click>=7,<10
+inflect>=2,<3
+jsonschema>=2,<4
 toml>=0.10,<1
+requests>=2.12
 flake8
 moto>=1,<2
 moto[server]>=1,<2

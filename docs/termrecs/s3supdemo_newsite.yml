@@ -1,0 +1,213 @@
+# The configurations that used for the recording, feel free to edit them
+config:
+
+  # Specify a command to be executed
+  # like `/bin/bash -l`, `ls`, or any other commands
+  # the default is bash for Linux
+  # or powershell.exe for Windows
+  command: bash -l
+  
+  # Specify the current working directory path
+  # the default is the current working directory path
+  cwd: /home/awooldrige
+  
+  # Export additional ENV variables
+  env:
+    recording: true
+  
+  # Explicitly set the number of columns
+  # or use `auto` to take the current
+  # number of columns of your shell
+  cols: 80
+  
+  # Explicitly set the number of rows
+  # or use `auto` to take the current
+  # number of rows of your shell
+  rows: 20
+  
+  # Amount of times to repeat GIF
+  # If value is -1, play once
+  # If value is 0, loop indefinitely
+  # If value is a positive number, loop n times
+  repeat: 0
+  
+  # Quality
+  # 1 - 100
+  quality: 100
+  
+  # Delay between frames in ms
+  # If the value is `auto` use the actual recording delays
+  frameDelay: auto
+  
+  # Maximum delay between frames in ms
+  # Ignored if the `frameDelay` isn't set to `auto`
+  # Set to `auto` to prevent limiting the max idle time
+  maxIdleTime: 2000
+  
+  # The surrounding frame box
+  # The `type` can be null, window, floating, or solid`
+  # To hide the title use the value null
+  # Don't forget to add a backgroundColor style with a null as type
+  frameBox:
+    type: floating
+    title: s3sup demo - new site
+    style:
+      border: 0px black solid
+      # boxShadow: none
+      # margin: 0px
+  
+  # Add a watermark image to the rendered gif
+  # You need to specify an absolute path for
+  # the image on your machine or a URL, and you can also
+  # add your own CSS styles
+  watermark:
+    imagePath: null
+    style:
+      position: absolute
+      right: 15px
+      bottom: 15px
+      width: 100px
+      opacity: 0.9
+  
+  # Cursor style can be one of
+  # `block`, `underline`, or `bar`
+  cursorStyle: block
+  
+  # Font family
+  # You can use any font that is installed on your machine
+  # in CSS-like syntax
+  fontFamily: "Monaco, Lucida Console, Ubuntu Mono, Monospace"
+  
+  # The size of the font
+  fontSize: 12
+  
+  # The height of lines
+  lineHeight: 1
+  
+  # The spacing between letters
+  letterSpacing: 0
+  
+  # Theme
+  theme:
+    background: "transparent"
+    foreground: "#afafaf"
+    cursor: "#c7c7c7"
+    black: "#232628"
+    red: "#fc4384"
+    green: "#b3e33b"
+    yellow: "#ffa727"
+    blue: "#75dff2"
+    magenta: "#ae89fe"
+    cyan: "#708387"
+    white: "#d5d5d0"
+    brightBlack: "#626566"
+    brightRed: "#ff7fac"
+    brightGreen: "#c8ed71"
+    brightYellow: "#ebdf86"
+    brightBlue: "#75dff2"
+    brightMagenta: "#ae89fe"
+    brightCyan: "#b1c6ca"
+    brightWhite: "#f9f9f4"
+  
+# Records, feel free to edit them
+records:
+  - delay: 2000
+    content: "\e]0;awooldrige@laptop:~\e\\\e]7;file://laptop/home/awooldrige\e\\\e]0;awooldrige@laptop: ~\a\e[01;32mawooldrige@laptop\e[00m:\e[01;34m~\e[00m$ "
+  - delay: 1000
+    content: cd
+  - delay: 127
+    content: ' '
+  - delay: 172
+    content: w
+  - delay: 120
+    content: w.example.com
+  - delay: 300
+    content: "\r\n"
+  - delay: 5
+    content: "\e]0;awooldrige@laptop:~/www.example.com\e\\\e]7;file://laptop/home/awooldrige/www.example.com\e\\\e]0;awooldrige@laptop: ~/www.example.com\a\e[01;32mawooldrige@laptop\e[00m:\e[01;34m~/www.example.com\e[00m$ "
+  - delay: 800
+    content: t
+  - delay: 227
+    content: ree
+  - delay: 62
+    content: "\r\n"
+  - delay: 25
+    content: "\e[01;34m.\e[00m\r\n├── \e[01;34mabout-us\e[00m\r\n│\_\_ └── index.html\r\n├── another.html\r\n├── \e[01;34massets\e[00m\r\n│\_\_ ├── \e[01;34m4.1.8\e[00m\r\n│\_\_ │\_\_ └── scripts.min.js\r\n│\_\_ ├── \e[01;35mlandscape.62.png\e[00m\r\n│\_\_ └── \e[01;35mlogo.svg\e[00m\r\n├── index.html\r\n├── new.html\r\n├── products.html\r\n├── robots.txt\r\n└── s3sup.toml\r\n\r\n3 directories, 10 files\r\n"
+  - delay: 7
+    content: "\e]0;awooldrige@laptop:~/www.example.com\e\\\e]7;file://laptop/home/awooldrige/www.example.com\e\\\e]0;awooldrige@laptop: ~/www.example.com\a\e[01;32mawooldrige@laptop\e[00m:\e[01;34m~/www.example.com\e[00m$ "
+  - delay: 6000
+    content: s
+  - delay: 180
+    content: '3sup'
+  - delay: 97
+    content: ' '
+  - delay: 115
+    content: s
+  - delay: 99
+    content: tatus
+  - delay: 119
+    content: "\r\n"
+  - delay: 431
+    content: "S3 site uploader. Using:\r\n"
+  - delay: 9
+    content: " * S3 bucket: www.example.com/\r\n\r\n"
+  - delay: 270
+    content: "Local changes to be synced to S3:\r\n"
+  - delay: 12
+    content: " \e[33m+ new\e[0m: 9 files\r\n   \e[33m+\e[0m about-us/index.html\r\n   \e[33m+\e[0m another.html\r\n   \e[33m+\e[0m assets/4.1.8/scripts.min.js\r\n   \e[33m+\e[0m assets/landscape.62.png\r\n   \e[33m+\e[0m assets/logo.svg\r\n   \e[33m+\e[0m index.html\r\n   \e[33m+\e[0m new.html\r\n   \e[33m+\e[0m products.html\r\n   \e[33m+\e[0m robots.txt\r\n"
+  - delay: 165
+    content: "\e]0;awooldrige@laptop:~/www.example.com\e\\\e]7;file://laptop/home/awooldrige/www.example.com\e\\\e]0;awooldrige@laptop: ~/www.example.com\a\e[01;32mawooldrige@laptop\e[00m:\e[01;34m~/www.example.com\e[00m$ "
+  - delay: 6000
+    content: s
+  - delay: 239
+    content: '3sup'
+  - delay: 99
+    content: ' '
+  - delay: 233
+    content: u
+  - delay: 115
+    content: pload
+  - delay: 136
+    content: "\r\n"
+  - delay: 518
+    content: "Summary of local changes to be synced to S3:\r\n"
+  - delay: 13
+    content: " \e[33m+ new\e[0m: 9 files\r\n"
+  - delay: 500
+    content: "\r\e[?25lSyncing to S3  [####################----------------]   55%   \e[33m+\e[0m assets/logo.svg            "
+  - delay: 119
+    content: "\r\e[?25lSyncing to S3  [########################------------]   66%   \e[33m+\e[0m index.html                 "
+  - delay: 120
+    content: "\r\e[?25lSyncing to S3  [############################--------]   77%   \e[33m+\e[0m new.html                   "
+  - delay: 120
+    content: "\r\e[?25lSyncing to S3  [################################----]   88%   \e[33m+\e[0m products.html              "
+  - delay: 120
+    content: "\r\e[?25lSyncing to S3  [####################################]  100%   \e[33m+\e[0m robots.txt                 \r\e[?25lSyncing to S3  [####################################]  100%                                \e[?25h\r\n"
+  - delay: 29
+    content: "\e[32mDone!\e[0m\r\n"
+  - delay: 188
+    content: "\e]0;awooldrige@laptop:~/www.example.com\e\\\e]7;file://laptop/home/awooldrige/www.example.com\e\\\e]0;awooldrige@laptop: ~/www.example.com\a\e[01;32mawooldrige@laptop\e[00m:\e[01;34m~/www.example.com\e[00m$ "
+  - delay: 6000
+    content: s
+  - delay: 154
+    content: '3sup'
+  - delay: 86
+    content: ' '
+  - delay: 247
+    content: s
+  - delay: 123
+    content: tatus
+  - delay: 130
+    content: "\r\n"
+  - delay: 401
+    content: "S3 site uploader. Using:\r\n"
+  - delay: 8
+    content: " * S3 bucket: www.example.com/\r\n\r\n"
+  - delay: 307
+    content: "No local changes to be synced.\r\n"
+  - delay: 160
+    content: "\e]0;awooldrige@laptop:~/www.example.com\e\\\e]7;file://laptop/home/awooldrige/www.example.com\e\\\e]0;awooldrige@laptop: ~/www.example.com\a\e[01;32mawooldrige@laptop\e[00m:\e[01;34m~/www.example.com\e[00m$ "
+  - delay: 12000
+    content: "^C\r\n"
+  - delay: 6
+    content: "\e]0;awooldrige@laptop:~/www.example.com\e\\\e]7;file://laptop/home/awooldrige/www.example.com\e\\\e]0;awooldrige@laptop: ~/www.example.com\a\e[01;32mawooldrige@laptop\e[00m:\e[01;34m~/www.example.com\e[00m$ "

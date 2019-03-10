@@ -93,15 +93,51 @@ def init(projectdir, verbose):
 @common_options
 def status(projectdir, verbose):
     """
-    Check what changes need to be made to get local static site in sync with
-    the S3 copy.
-
-    This command is read-only and will not make any changes to S3.
+    Show S3 changes required. Read-only.
     """
+    click.echo('S3 site uploader. Using:')
     # Shouldn't be calling anything that needs dryrun, but just to be safe!
-    p = s3sup.project.Project(projectdir, dryrun=True)
+    p = s3sup.project.Project(projectdir, dryrun=True, verbose=verbose)
+    if verbose or projectdir != '.':
+        click.echo(' * Local project directory: {0}'.format(projectdir))
+
+    try:
+        s3_root = p.rules['aws']['s3_project_root'].strip()
+    except KeyError:
+        s3_root = '/'
+    s3_root = '/' if s3_root == '' else s3_root
+
+    if s3_root != '/':
+        s3_root = '/{0}/'.format(s3_root.lstrip('/').rstrip('/'))
+
+    if verbose:
+        click.echo(' * AWS region: {0}'.format(p.rules['aws']['region_name']))
+
+    click.echo(' * S3 bucket: {0}{1}'.format(
+        p.rules['aws']['s3_bucket_name'], s3_root))
+
+    click.echo('')
     diff = p.calculate_diff()
     s3sup.catalogue.print_diff_summary(diff, verbose=True)
+
+
+@cli.command()
+@click.argument('local_file', nargs=-1)
+@common_options
+def inspect(local_file, projectdir, verbose):
+    """
+    Show calculated attributes (e.g. headers) before upload.
+    """
+    p = s3sup.project.Project(projectdir, dryrun=True, verbose=verbose)
+    p.print_summary()
+    for f in local_file:
+        click.echo()
+        try:
+            fp = p.file_prepper_wrapped(f)
+            fp.print_summary()
+        except FileNotFoundError:
+            msg = 'Could not open: {0}'.format(click.format_filename(f))
+            click.echo(click.style(msg, fg='red'), err=True)
 
 
 @cli.command()
@@ -116,10 +152,11 @@ def upload(projectdir, verbose, dryrun):
     Use --dryrun to test behaviour without changes actually being made to S3.
     Or use "s3sup status".
     """
-    p = s3sup.project.Project(projectdir, dryrun=dryrun)
+    p = s3sup.project.Project(projectdir, dryrun=dryrun, verbose=verbose)
     diff = p.calculate_diff()
     s3sup.catalogue.print_diff_summary(diff, verbose=verbose)
     p.sync()
+    click.echo(click.style('Done!', fg='green'))
 
 
 if __name__ == '__main__':

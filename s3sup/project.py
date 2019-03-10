@@ -1,19 +1,21 @@
 import os
+import functools
 import tempfile
 import boto3
 import botocore
 import click
-import time
 
 import s3sup.catalogue
 import s3sup.fileprepper
 import s3sup.rules
+import s3sup.utils
 
 
 class Project:
 
-    def __init__(self, local_project_root, dryrun=False):
+    def __init__(self, local_project_root, dryrun=False, verbose=True):
         self.dryrun = dryrun
+        self.verbose = verbose
         self.local_project_root = local_project_root
         try:
             self.rules = s3sup.rules.load_rules(os.path.join(
@@ -29,6 +31,7 @@ class Project:
             raise click.FileError(
                 os.path.join(local_project_root, 's3sup.toml'),
                 hint=error_text)
+        self._fp_cache = {}
 
     def _boto_bucket(self):
         s = boto3.session.Session()
@@ -45,15 +48,28 @@ class Project:
         b = r.Bucket(self.rules['aws']['s3_bucket_name'])
         return b
 
+    def file_prepper_wrapped(self, path):
+        try:
+            return self._fp_cache[path]
+        except KeyError:
+            self._fp_cache[path] = s3sup.fileprepper.FilePrepper(
+                self.local_project_root, path, self.rules)
+        return self._fp_cache[path]
+
     def _obj_path(self, rel_path):
-        return s3sup.fileprepper.s3_path(
-            self.rules['aws']['s3_project_root'], rel_path)
+        root = ''
+        try:
+            root = self.rules['aws']['s3_project_root']
+        except KeyError:
+            pass
+        return s3sup.fileprepper.s3_path(root, rel_path)
 
     def _local_fs_path(self, rel_path):
         return os.path.join(self.local_project_root, rel_path)
 
-    def build_catalogue(self):
-        c = s3sup.catalogue.Catalogue()
+    @functools.lru_cache(maxsize=8)
+    def local_catalogue(self):
+        local_cat = s3sup.catalogue.Catalogue()
         for root, dirs, files in os.walk(self.local_project_root):
             for f in files:
                 if f == 's3sup.toml':
@@ -61,22 +77,23 @@ class Project:
                 abs_path = os.path.join(root, f)
                 rel_path = os.path.relpath(
                     abs_path, start=self.local_project_root)
-                fp = s3sup.fileprepper.FilePrepper(
-                    self.local_project_root, rel_path, self.rules)
-                c.add_file(rel_path, fp.content_hash(), fp.attributes_hash())
-        return c
+                fp = self.file_prepper_wrapped(rel_path)
+                local_cat.add_file(
+                    rel_path, fp.content_hash(), fp.attributes_hash())
+        return local_cat
 
-    def build_remote_catalogue(self):
+    @functools.lru_cache(maxsize=8)
+    def remote_catalogue(self):
         b = self._boto_bucket()
         rmt_cat_path = self._obj_path('.s3sup.catalogue.csv')
         f = b.Object(rmt_cat_path)
-        c = s3sup.catalogue.Catalogue()
+        remote_cat = s3sup.catalogue.Catalogue()
 
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
         try:
             f.download_file(tmpp)
-            c.from_csv(tmpp)
+            remote_cat.from_csv(tmpp)
         except botocore.exceptions.NoCredentialsError:
             raise click.UsageError(
                 'Cannot find AWS credentials.\n -> Configure AWS credentials '
@@ -84,21 +101,19 @@ class Project:
                 '\n -> https://boto3.amazonaws.com/v1/documentation/'
                 'api/latest/guide/configuration.html')
         except botocore.exceptions.ClientError:
-            click.echo('Project not uploaded before (no {0} on S3).'.format(
-                rmt_cat_path))
+            if self.verbose:
+                click.echo(
+                    'Project not uploaded before (no {0} on S3).'.format(
+                        rmt_cat_path))
             pass
         os.remove(tmpp)
-        return c
+        return remote_cat
 
     def calculate_diff(self):
-        try:
-            return self._diff
-        except AttributeError:
-            pass
-        local_cat = self.build_catalogue()
-        remote_cat = self.build_remote_catalogue()
-        self._diff = local_cat.diff_dict(remote_cat)
-        return self._diff
+        local_cat = self.local_catalogue()
+        remote_cat = self.remote_catalogue()
+        diff = local_cat.diff_dict(remote_cat)
+        return diff
 
     def sync(self):
         changes = s3sup.catalogue.change_list(self.calculate_diff())
@@ -114,8 +129,7 @@ class Project:
         b = self._boto_bucket()
 
         def _prepped_file_and_obj(path):
-            fp = s3sup.fileprepper.FilePrepper(
-                self.local_project_root, path, self.rules)
+            fp = self.file_prepper_wrapped(path)
             o = b.Object(fp.s3_path())
             return (fp, o)
 
@@ -123,8 +137,7 @@ class Project:
             if item is None:
                 return ''
             cr, p = item
-            s3_path = s3sup.fileprepper.s3_path(
-                self.rules['aws']['s3_project_root'], p)
+            s3_path = self._obj_path(p)
 
             crs = s3sup.catalogue.CR_STYLES[cr]
             change_symbol = click.style(
@@ -157,7 +170,7 @@ class Project:
                 if cr == s3sup.catalogue.ChangeReason['DELETED']:
                     o.delete()
 
-        c = self.build_catalogue()
+        c = self.local_catalogue()
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
         c.to_csv(tmpp)
@@ -166,3 +179,21 @@ class Project:
             o.put(Body=lf, ACL='private')
         os.remove(tmpp)
         return changes
+
+    def print_summary(self):
+        lcl_dir = click.format_filename(self.local_project_root)
+        if lcl_dir == '.':
+            lcl_dir += ' (current dir)'
+
+        s3p = 's3://{0}/'.format(self.rules['aws']['s3_bucket_name'])
+        s3pr = self.rules['aws']['s3_project_root'].lstrip('/').rstrip('/')
+        if len(s3pr) > 0:
+            s3p += s3pr
+
+        to_print = {
+            'Local project dir': lcl_dir,
+            'AWS region': self.rules['aws']['region_name'],
+            'S3 bucket': s3p
+        }
+        s3sup.utils.pprint_h1('PROJECT INFORMATION')
+        s3sup.utils.pprint_dict(to_print)

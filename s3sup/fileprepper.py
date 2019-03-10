@@ -1,10 +1,14 @@
 import os
+import functools
 import pathlib
 import pickle
 import hashlib
 import mimetypes
-import s3sup.rules
 import collections
+
+import click
+
+import s3sup.rules
 
 
 TEXT_BASED_MIMETYPES = {
@@ -46,13 +50,25 @@ class FilePrepper:
 
     def __init__(self, project_root, path, rules):
         self.project_root = project_root
+
+        # Relative to project root. E.g. 'index.html'.
         self.path = path
-        self.abspath = os.path.abspath(os.path.join(project_root, path))
+
+        # Absolute path. E.g. '/home/jsmith/proj_1/index.html'
+        self.path_local_abs = os.path.abspath(os.path.join(
+            project_root, path))
+
         self.rules = rules
         self.path_directives = s3sup.rules.directives_for_path(
             self.path, self.rules)
 
-        attrs = {}
+    @functools.lru_cache(maxsize=None)
+    def attributes(self):
+        # Defaults
+        attrs = {
+            'ACL': 'public-read',
+            'Cache-Control': 'max-age=10'
+        }
         fext = pathlib.Path(self.path).suffix
         mime_type, encoding = mimetypes.guess_type(self.path)
         try:
@@ -109,12 +125,9 @@ class FilePrepper:
             except KeyError:
                 continue
         # Set as a sorted dict
-        # self.attrs = {k: attrs[k] for k in sorted(attrs)}
-        self.attrs = collections.OrderedDict(
+        # self.attributes() = {k: attrs[k] for k in sorted(attrs)}
+        return collections.OrderedDict(
             sorted(attrs.items(), key=lambda t: t[0]))
-
-    def attributes(self):
-        return self.attrs
 
     def attributes_as_boto_args(self):
         key_map = {
@@ -128,46 +141,46 @@ class FilePrepper:
             'Content-Language': 'ContentLanguage',
             'S3Metadata': 'Metadata'
         }
-        boto_attrs = {key_map[k]: v for k, v in self.attrs.items()}
-
-        # Defaults for if none set
-        defaults = {
-            'ACL': 'public-read',
-            'CacheControl': 'max-age=120'
-        }
-        for k, v in defaults.items():
-            if k not in boto_attrs:
-                boto_attrs[k] = v
-        return boto_attrs
+        return {key_map[k]: v for k, v in self.attributes().items()}
 
     def s3_path(self):
-        return s3_path(self.rules['aws']['s3_project_root'], self.path)
+        root = ''
+        try:
+            root = self.rules['aws']['s3_project_root']
+        except KeyError:
+            pass
+        return s3_path(root, self.path)
 
     def content_fileobj(self):
-        return open(self.abspath, 'rb')
+        return open(self.path_local_abs, 'rb')
 
+    @functools.lru_cache(maxsize=None)
     def content_hash(self):
-        try:
-            return self._content_hash
-        except AttributeError:
-            pass
         sha = hashlib.sha256()
         with self.content_fileobj() as f_in:
             fbuf = f_in.read(HASH_READ_BLOCK)
             while len(fbuf) > 0:
                 sha.update(fbuf)
                 fbuf = f_in.read(HASH_READ_BLOCK)
-            self._content_hash = sha.hexdigest()
-        return self._content_hash
+            content_hash = sha.hexdigest()
+        return content_hash
 
+    @functools.lru_cache(maxsize=None)
     def attributes_hash(self):
-        try:
-            return self._attributes_hash
-        except AttributeError:
-            pass
-        self._attributes_hash = hashlib.sha256(
-            pickle.dumps(self.attrs)).hexdigest()
-        return self._attributes_hash
+        return hashlib.sha256(pickle.dumps(self.attributes())).hexdigest()
 
     def hashes(self):
         return (self.content_hash(), self.attributes_hash())
+
+    def print_summary(self):
+        to_print = {
+            'Local path': self.path_local_abs,
+            'S3 path': 's3://{0}/{1}'.format(
+                self.rules['aws']['s3_bucket_name'], self.s3_path()),
+            'Attributes': self.attributes(),
+            'content hash': self.content_hash(),
+            'Attributes hash': self.attributes_hash()
+        }
+        title = 'File: {0}'.format(click.format_filename(self.path))
+        s3sup.utils.pprint_h3(title)
+        s3sup.utils.pprint_dict(to_print)

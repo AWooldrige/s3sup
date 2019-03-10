@@ -26,8 +26,9 @@ def _load_schema():
 
 
 def _compile_path_regex(rules):
-    for r in rules['path_specific']:
-        r['path_re'] = re.compile(r['path'])
+    if 'path_specific' in rules:
+        for r in rules['path_specific']:
+            r['path_re'] = re.compile(r['path'])
     return rules
 
 

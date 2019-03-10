@@ -91,12 +91,13 @@ def print_diff_summary(dd, verbose=False):
     ie = inflect.engine()
     nc = dd['num_changes']
     if nc <= 0:
-        click.echo('Local and S3 catalogue up to date.'.format(
-            len(dd['unchanged'])))
-        if not verbose:
-            return
+        click.echo('No local changes to be synced.')
+        return
 
-    click.echo('Summary of local changes to be synced to S3:')
+    if verbose:
+        click.echo('Local changes to be synced to S3:')
+    else:
+        click.echo('Summary of local changes to be synced to S3:')
 
     def _p(files, change_reason):
         num_files = len(files)
