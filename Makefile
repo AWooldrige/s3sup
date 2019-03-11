@@ -4,11 +4,11 @@
 venv: venv/bin/activate
 venv/bin/activate: requirements.txt
 	test -d venv || python3 -m venv venv
-	. venv/bin/activate && pip install -r requirements.txt
-	touch venv/bin/activate
+	. venv/bin/activate && python3 -m pip install -r requirements.txt
 
 # TODO: this needs to depend on all source files
 dist: venv
+	. venv/bin/activate && python3 -m pip install setuptools wheel twine
 	. venv/bin/activate && python3 setup.py sdist bdist_wheel
 
 
