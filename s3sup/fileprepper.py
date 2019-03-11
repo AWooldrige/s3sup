@@ -6,6 +6,7 @@ import mimetypes
 import collections
 
 import click
+import humanize
 
 import s3sup.rules
 
@@ -147,6 +148,10 @@ class FilePrepper:
     def content_fileobj(self):
         return self.path_local_abs.open('rb')
 
+    def size(self):
+        """Size of local file in bytes"""
+        return self.path_local_abs.stat().st_size
+
     @functools.lru_cache(maxsize=None)
     def content_hash(self):
         sha = hashlib.sha256()
@@ -171,7 +176,8 @@ class FilePrepper:
             'S3 path': 's3://{0}/{1}'.format(
                 self.rules['aws']['s3_bucket_name'], self.s3_path()),
             'Attributes': self.attributes(),
-            'content hash': self.content_hash(),
+            'Content size': humanize.naturalsize(self.size()),
+            'Content hash': self.content_hash(),
             'Attributes hash': self.attributes_hash()
         }
         title = 'File: {0}'.format(click.format_filename(

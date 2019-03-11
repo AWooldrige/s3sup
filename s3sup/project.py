@@ -1,9 +1,11 @@
 import os
 import functools
 import tempfile
+
 import boto3
 import botocore
 import click
+import humanize
 
 import s3sup.catalogue
 import s3sup.fileprepper
@@ -75,7 +77,7 @@ class Project:
         return local_cat
 
     @functools.lru_cache(maxsize=8)
-    def remote_catalogue(self):
+    def get_remote_catalogue(self):
         b = self._boto_bucket()
         rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
         f = b.Object(rmt_cat_fp.s3_path())
@@ -101,9 +103,20 @@ class Project:
         os.remove(tmpp)
         return remote_cat
 
+    def write_remote_catalogue(self, catalogue):
+        hndl, tmpp = tempfile.mkstemp()
+        os.close(hndl)
+        catalogue.to_csv(tmpp)
+        rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
+        b = self._boto_bucket()
+        o = b.Object(rmt_cat_fp.s3_path())
+        with open(tmpp, 'rb') as lf:
+            o.put(Body=lf, ACL='private')
+        os.remove(tmpp)
+
     def calculate_diff(self):
         local_cat = self.local_catalogue()
-        remote_cat = self.remote_catalogue()
+        remote_cat = self.get_remote_catalogue()
         diff = local_cat.diff_dict(remote_cat)
         return diff
 
@@ -131,7 +144,11 @@ class Project:
                 '{symbol}'.format(symbol=getattr(crs, 'symbol')),
                 fg=getattr(crs, 'colour'))
 
-            return ' {0} {1}'.format(change_symbol, fp.s3_path())
+            cur = ' {0} {1}'.format(change_symbol, fp.s3_path())
+            if (cr == s3sup.catalogue.ChangeReason['NEW_FILE'] or
+                    cr == s3sup.catalogue.ChangeReason['CONTENT_CHANGED']):
+                cur += ' ({0})'.format(humanize.naturalsize(fp.size()))
+            return cur
 
         with click.progressbar(changes_with_prep, label='Syncing to S3',
                                item_show_func=display_current) as bar:
@@ -157,15 +174,7 @@ class Project:
                 if cr == s3sup.catalogue.ChangeReason['DELETED']:
                     o.delete()
 
-        c = self.local_catalogue()
-        hndl, tmpp = tempfile.mkstemp()
-        os.close(hndl)
-        c.to_csv(tmpp)
-        rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
-        o = b.Object(rmt_cat_fp.s3_path())
-        with open(tmpp, 'rb') as lf:
-            o.put(Body=lf, ACL='private')
-        os.remove(tmpp)
+        self.write_remote_catalogue(self.local_catalogue())
         return changes
 
     def print_summary(self):

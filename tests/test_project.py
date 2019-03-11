@@ -41,7 +41,7 @@ class TestProject(unittest.TestCase):
 
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         p = Project(project_root)
-        cat = p.remote_catalogue()
+        cat = p.get_remote_catalogue()
         self.assertEqual({}, cat.to_dict())
 
     @moto.mock_s3
@@ -58,7 +58,7 @@ class TestProject(unittest.TestCase):
                 Body=exp_csv_f)
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         p = Project(project_root)
-        cat = p.remote_catalogue()
+        cat = p.get_remote_catalogue()
         self.assertTrue('assets/logo.svg' in cat.to_dict())
 
 

@@ -41,6 +41,7 @@ setup(
     install_requires=[
         'boto3>=1,<2',
         'click>=7,<9',
+        'humanize>=0.4,<1',
         'inflect>=2,<3',
         'jsonschema>=2,<4',
         'toml>=0.9,<1'
