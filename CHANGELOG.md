@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
  - Minor performance improvements from memoization.
+ - Display file size along with uploads.
 
 ## [0.1.1] - 2019-03-02
 ### Added

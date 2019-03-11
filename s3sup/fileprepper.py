@@ -1,4 +1,3 @@
-import os
 import functools
 import pathlib
 import pickle
@@ -7,6 +6,7 @@ import mimetypes
 import collections
 
 import click
+import humanize
 
 import s3sup.rules
 
@@ -38,25 +38,20 @@ DEFAULT_CHARSET_MIMETYPES = TEXT_BASED_MIMETYPES
 HASH_READ_BLOCK = 65536
 
 
-def s3_path(s3_project_root, rel_path):
-    pr = s3_project_root.lstrip('/').rstrip('/')
-    if pr == '':
-        return '{0}{1}'.format(pr, rel_path)
-    else:
-        return '{0}/{1}'.format(pr, rel_path)
-
-
 class FilePrepper:
 
     def __init__(self, project_root, path, rules):
         self.project_root = project_root
-
-        # Relative to project root. E.g. 'index.html'.
         self.path = path
 
+        self.path_proj = pathlib.Path(project_root)
+
+        # Relative to project root. E.g. 'index.html'.
+        self.path_local_rel = pathlib.Path(path)
+
         # Absolute path. E.g. '/home/jsmith/proj_1/index.html'
-        self.path_local_abs = os.path.abspath(os.path.join(
-            project_root, path))
+        self.path_local_abs = self.path_proj.joinpath(
+            self.path_local_rel).resolve()
 
         self.rules = rules
         self.path_directives = s3sup.rules.directives_for_path(
@@ -144,15 +139,18 @@ class FilePrepper:
         return {key_map[k]: v for k, v in self.attributes().items()}
 
     def s3_path(self):
-        root = ''
         try:
-            root = self.rules['aws']['s3_project_root']
+            root = self.rules['aws']['s3_project_root'].lstrip('/').rstrip('/')
+            return '{0}/{1}'.format(root, self.path_local_rel.as_posix())
         except KeyError:
-            pass
-        return s3_path(root, self.path)
+            return self.path_local_rel.as_posix()
 
     def content_fileobj(self):
-        return open(self.path_local_abs, 'rb')
+        return self.path_local_abs.open('rb')
+
+    def size(self):
+        """Size of local file in bytes"""
+        return self.path_local_abs.stat().st_size
 
     @functools.lru_cache(maxsize=None)
     def content_hash(self):
@@ -174,13 +172,15 @@ class FilePrepper:
 
     def print_summary(self):
         to_print = {
-            'Local path': self.path_local_abs,
+            'Local path': click.format_filename(str(self.path_local_abs)),
             'S3 path': 's3://{0}/{1}'.format(
                 self.rules['aws']['s3_bucket_name'], self.s3_path()),
             'Attributes': self.attributes(),
-            'content hash': self.content_hash(),
+            'Content size': humanize.naturalsize(self.size()),
+            'Content hash': self.content_hash(),
             'Attributes hash': self.attributes_hash()
         }
-        title = 'File: {0}'.format(click.format_filename(self.path))
+        title = 'File: {0}'.format(click.format_filename(
+            str(self.path_local_rel)))
         s3sup.utils.pprint_h3(title)
         s3sup.utils.pprint_dict(to_print)

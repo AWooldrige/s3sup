@@ -3,8 +3,8 @@ s3sup may be better than other S3 syncing solutions (e.g. `s3sync`) if you host
 a static site on S3. Main features include:
 
  * MIME type detection, with `Content-Type` set correctly.
- * Setting custom HTTP headers (e.g. `Cache-Control` and `Content-Disposition`)
-   on groups of files or individually.
+ * Setting important HTTP headers (e.g. `Cache-Control` and
+   `Content-Disposition`) on groups of files or individually.
  * Fast and efficient synchronisation to S3 through maintaining a catalogue of
    content already on S3.
 
