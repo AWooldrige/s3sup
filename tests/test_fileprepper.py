@@ -56,33 +56,33 @@ class TestFixtureProj1(unittest.TestCase):
 class TestS3PathCreation(unittest.TestCase):
 
     def test_project_root_is_root(self):
-        self.assertEqual(
-            'products.html',
-            s3sup.fileprepper.s3_path('', 'products.html'))
+        fp = s3sup.fileprepper.FilePrepper('', 'products.html', {})
+        self.assertEqual('products.html', fp.s3_path())
 
     def test_project_root_has_forward_slash(self):
-        self.assertEqual(
-            'products.html',
-            s3sup.fileprepper.s3_path('/', 'products.html'))
+        fp = s3sup.fileprepper.FilePrepper('/', 'products.html', {})
+        self.assertEqual('products.html', fp.s3_path())
 
     def test_project_root_is_subdir_with_leading(self):
-        self.assertEqual(
-            'staging/products.html',
-            s3sup.fileprepper.s3_path('/staging', 'products.html'))
+        fp = s3sup.fileprepper.FilePrepper(
+            '', 'products.html',
+            {'aws': {'s3_project_root': '/staging'}})
+        self.assertEqual('staging/products.html', fp.s3_path())
 
     def test_project_root_is_subdir_with_trailing(self):
-        self.assertEqual(
-            'staging/products.html',
-            s3sup.fileprepper.s3_path('/staging/', 'products.html'))
+        fp = s3sup.fileprepper.FilePrepper(
+            '', 'products.html',
+            {'aws': {'s3_project_root': '/staging/'}})
+        self.assertEqual('staging/products.html', fp.s3_path())
 
     def test_project_root_is_subdir_without_trailing(self):
-        self.assertEqual(
-            'staging/products.html',
-            s3sup.fileprepper.s3_path('staging/', 'products.html'))
+        fp = s3sup.fileprepper.FilePrepper(
+            'subdir_somewhere', 'products.html',
+            {'aws': {'s3_project_root': 'staging/'}})
+        self.assertEqual('staging/products.html', fp.s3_path())
 
     def test_slashes_everywhere(self):
-        self.assertEqual(
-            'staging/v1.1/disk/products.html',
-            s3sup.fileprepper.s3_path(
-                '/staging/v1.1',
-                'disk/products.html'))
+        fp = s3sup.fileprepper.FilePrepper(
+            '', 'disk/products.html',
+            {'aws': {'s3_project_root': 'staging/v1.1'}})
+        self.assertEqual('staging/v1.1/disk/products.html', fp.s3_path())

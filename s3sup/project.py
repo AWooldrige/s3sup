@@ -56,14 +56,6 @@ class Project:
                 self.local_project_root, path, self.rules)
         return self._fp_cache[path]
 
-    def _obj_path(self, rel_path):
-        root = ''
-        try:
-            root = self.rules['aws']['s3_project_root']
-        except KeyError:
-            pass
-        return s3sup.fileprepper.s3_path(root, rel_path)
-
     def _local_fs_path(self, rel_path):
         return os.path.join(self.local_project_root, rel_path)
 
@@ -85,8 +77,8 @@ class Project:
     @functools.lru_cache(maxsize=8)
     def remote_catalogue(self):
         b = self._boto_bucket()
-        rmt_cat_path = self._obj_path('.s3sup.catalogue.csv')
-        f = b.Object(rmt_cat_path)
+        rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
+        f = b.Object(rmt_cat_fp.s3_path())
         remote_cat = s3sup.catalogue.Catalogue()
 
         hndl, tmpp = tempfile.mkstemp()
@@ -104,7 +96,7 @@ class Project:
             if self.verbose:
                 click.echo(
                     'Project not uploaded before (no {0} on S3).'.format(
-                        rmt_cat_path))
+                        rmt_cat_fp.s3_path()))
             pass
         os.remove(tmpp)
         return remote_cat
@@ -117,6 +109,8 @@ class Project:
 
     def sync(self):
         changes = s3sup.catalogue.change_list(self.calculate_diff())
+        changes_with_prep = [
+            (cr, p, self.file_prepper_wrapped(p)) for cr, p in changes]
 
         if len(changes) <= 0:
             return changes
@@ -128,28 +122,21 @@ class Project:
 
         b = self._boto_bucket()
 
-        def _prepped_file_and_obj(path):
-            fp = self.file_prepper_wrapped(path)
-            o = b.Object(fp.s3_path())
-            return (fp, o)
-
         def display_current(item):
             if item is None:
                 return ''
-            cr, p = item
-            s3_path = self._obj_path(p)
-
+            cr, p, fp = item
             crs = s3sup.catalogue.CR_STYLES[cr]
             change_symbol = click.style(
                 '{symbol}'.format(symbol=getattr(crs, 'symbol')),
                 fg=getattr(crs, 'colour'))
 
-            return ' {0} {1}'.format(change_symbol, s3_path)
+            return ' {0} {1}'.format(change_symbol, fp.s3_path())
 
-        with click.progressbar(changes, label='Syncing to S3',
+        with click.progressbar(changes_with_prep, label='Syncing to S3',
                                item_show_func=display_current) as bar:
-            for cr, p in bar:
-                fp, o = _prepped_file_and_obj(p)
+            for cr, p, fp in bar:
+                o = b.Object(fp.s3_path())
                 if cr == s3sup.catalogue.ChangeReason['NEW_FILE']:
                     with fp.content_fileobj() as lf:
                         o.put(Body=lf, **fp.attributes_as_boto_args())
@@ -162,7 +149,7 @@ class Project:
                     o.copy_from(
                         CopySource={
                             'Bucket': self.rules['aws']['s3_bucket_name'],
-                            'Key': self._obj_path(p)},
+                            'Key': fp.s3_path()},
                         MetadataDirective='REPLACE',
                         TaggingDirective='REPLACE',
                         **fp.attributes_as_boto_args())
@@ -174,7 +161,8 @@ class Project:
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
         c.to_csv(tmpp)
-        o = b.Object(self._obj_path('.s3sup.catalogue.csv'))
+        rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
+        o = b.Object(rmt_cat_fp.s3_path())
         with open(tmpp, 'rb') as lf:
             o.put(Body=lf, ACL='private')
         os.remove(tmpp)

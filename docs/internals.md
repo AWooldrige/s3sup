@@ -26,7 +26,7 @@ New features
    and final S3 path.
  * [ ] Allow S3 website redirects to be set.
  * [ ] Allow custom error page to be set.
- * [ ] Progress bar for individual large files?
+ * [ ] Progress indicator for individual large files.
  * [ ] Parallelise S3 operations.
 
 Improvements
