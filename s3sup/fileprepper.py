@@ -140,10 +140,14 @@ class FilePrepper:
 
     def s3_path(self):
         try:
-            root = self.rules['aws']['s3_project_root'].lstrip('/').rstrip('/')
-            return '{0}/{1}'.format(root, self.path_local_rel.as_posix())
+            root = self.rules['aws']['s3_project_root']
         except KeyError:
-            return self.path_local_rel.as_posix()
+            root = ''
+        root = root.strip().strip('/')
+        path = self.path_local_rel.as_posix()
+        if len(root) > 0:
+            return '{0}/{1}'.format(root, path)
+        return path
 
     def content_fileobj(self):
         return self.path_local_abs.open('rb')

@@ -183,9 +183,10 @@ class Project:
             lcl_dir += ' (current dir)'
 
         s3p = 's3://{0}/'.format(self.rules['aws']['s3_bucket_name'])
-        s3pr = self.rules['aws']['s3_project_root'].lstrip('/').rstrip('/')
-        if len(s3pr) > 0:
-            s3p += s3pr
+        try:
+            s3p += self.rules['aws']['s3_project_root'].lstrip('/').rstrip('/')
+        except KeyError:
+            pass
 
         to_print = {
             'Local project dir': lcl_dir,

@@ -192,6 +192,16 @@ class TestInspect(unittest.TestCase):
     """Inspect commands should run fine without S3 connection"""
 
     @moto.mock_s3
+    def test_minimal_project(self):
+        project_root = os.path.join(MODULE_DIR, 'fixture_proj_2_minimal')
+        runner = CliRunner()
+        result = runner.invoke(
+            s3sup.scripts.s3sup.cli,
+            ['inspect', '-p', project_root, 'index.html'])
+        self.assertEqual(0, result.exit_code)
+        self.assertIn('ACL: public-read', result.stdout)
+
+    @moto.mock_s3
     def test_normal_use_case_individual_file_in_current_dir(self):
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         runner = CliRunner()

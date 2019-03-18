@@ -63,13 +63,19 @@ class TestS3PathCreation(unittest.TestCase):
         fp = s3sup.fileprepper.FilePrepper('/', 'products.html', {})
         self.assertEqual('products.html', fp.s3_path())
 
-    def test_project_root_is_subdir_with_leading(self):
+    def test_s3_project_root_set_empty(self):
+        fp = s3sup.fileprepper.FilePrepper(
+            '', 'products.html',
+            {'aws': {'s3_project_root': ''}})
+        self.assertEqual('products.html', fp.s3_path())
+
+    def test_s3_project_root_is_subdir_with_leading(self):
         fp = s3sup.fileprepper.FilePrepper(
             '', 'products.html',
             {'aws': {'s3_project_root': '/staging'}})
         self.assertEqual('staging/products.html', fp.s3_path())
 
-    def test_project_root_is_subdir_with_trailing(self):
+    def test_s3_project_root_is_subdir_with_trailing(self):
         fp = s3sup.fileprepper.FilePrepper(
             '', 'products.html',
             {'aws': {'s3_project_root': '/staging/'}})

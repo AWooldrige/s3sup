@@ -150,5 +150,23 @@ class TestProjectSyncProjectChanges(unittest.TestCase):
         os.remove(tmpp)
 
 
+class TestProjectDefaultsWithEquivalentConf(unittest.TestCase):
+
+    @moto.mock_s3
+    def test_multiple_project_changes(self):
+        self.conn = boto3.resource('s3', region_name='eu-west-1')
+        self.conn.create_bucket(Bucket='www.example.com')
+
+        project_root_n = os.path.join(MODULE_DIR, 'fixture_proj_3.1_defaults')
+        pn = Project(project_root_n)
+        self.assertEqual(
+            ['index.html'], pn.calculate_diff()['upload']['new_files'])
+        pn.sync()
+
+        project_root = os.path.join(MODULE_DIR, 'fixture_proj_3_defaults')
+        p = Project(project_root)
+        self.assertEqual(['index.html'], p.calculate_diff()['unchanged'])
+
+
 if __name__ == '__main__':
     unittest.main()
