@@ -71,23 +71,30 @@ combined from all matching `[[path_specific]]` entries, with the last matching
 `[[path_specific]]` directive entry winning for equivalent directive keys.
 
 Along with `path`, the following directives can be set:
- * `ACL`: One of: private, public-read, authenticated-read. Default
+ * `ACL`: One of: private, public-read, authenticated-read. Default:
    'public-read'.
  * `StorageClass`: For an S3 website, usually either 'STANDARD' or
-   'REDUCED_REDUNDANCY'. Default 'STANDARD'.
+   'REDUCED_REDUNDANCY'. Default: 'STANDARD'.
  * `WebsiteRedirectLocation`: Instruct S3 to respond with a redirect to this
    URL, rather than serving the file.
- * `Cache-Control`: Set HTTP header value.
+ * `Cache-Control`: Set HTTP header value to control cache lifetime. Default:
+   'max-age=10'.
  * `Content-Disposition`: Set HTTP header value.
  * `Content-Type`: Set HTTP header value. Only override this if absolutely
-   necessary, s3sup MIME type detection normally covers this.
+   necessary as s3sup MIME type detection normally sets this header correctly.
+   Default: automatically determined.
  * `charset`: Manually specify the character encoding of the file, which is
-   appended to `Content-Type`.
+   appended to `Content-Type`. Usually setting charset in the global
+   configuration section is adequate but this directives allows control on a
+   path level.
  * `Content-Encoding`: Set HTTP header value. Only override this if absolutely
    necessary, s3sup encoding detection normally covers this.
+ * `Content-Type`: Set HTTP header value. Only override this if necessary as
+   s3sup content encoding detection normally sets this header correctly.
+   Default: automatically determined.
 
-Use `s3sup inspect <filename>` to check the attributes that s3sup has
-calculated from your configuration settings:
+Use `s3sup inspect <filename>` to check the attributes that s3sup will set
+based on your configuration settings and defaults:
 
     $ s3sup inspect index.html
     ************************************************************
@@ -108,6 +115,15 @@ calculated from your configuration settings:
       - Content size: 166 Bytes
       - Content hash: e1086538d9d7f9e458c0890b17e768f7ace099b9df922de65fb0009865784284
       - Attributes hash: f5a7cc18a936c3a406d958ea1d64dd8e760bf3d9cabb830810089f0a44fe8ab6
+
+### `[mimetype_overrides]` section
+Optional, usually not required. Provide manual mappings of file extensions to
+MIME type, which will take precedence over any automatic MIME type detection
+that s3sup has made. E.g.
+
+    [mimetype_overrides]
+    '.woff2' = 'font/woff2'
+    '.toml' = 'application/toml'
 
 
 ### Example configuration file

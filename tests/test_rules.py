@@ -65,6 +65,22 @@ class TestElaborateRules(unittest.TestCase):
         path = 'recipe/in-dev/chef-card'
         expected_directives = {
             'Cache-Control': 'max-age=320',
-            'Content-Type': 'text/chefcard3'
+            'Content-Type': 'text/chefcard3',
+            'Content-Encoding': 'utf9.2'
+        }
+        self.assertDirectivesForPath(path, expected_directives)
+
+    def test_website_redirects_work(self):
+        path = '1999/history.shtml'
+        expected_directives = {
+            'WebsiteRedirectLocation': 'https://www.example.com/about-us/'
+        }
+        self.assertDirectivesForPath(path, expected_directives)
+
+    def test_hidden_recipes(self):
+        path = 'recipedownload/20190102.pdf'
+        expected_directives = {
+            'ACL': 'private',
+            'Content-Disposition': 'attachment'
         }
         self.assertDirectivesForPath(path, expected_directives)

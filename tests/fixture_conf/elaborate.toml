@@ -19,24 +19,22 @@ Cache-Control = 'max-age=90'
 [[path_specific]]
 path = 'recipe/in-dev/chef-card'
 Content-Type = 'text/chefcard3'
+Content-Encoding = 'utf9.2'
 
 [[path_specific]]
 path = '^regular-churn/.*'
 StorageClass = 'REDUCED_REDUNDANCY'
-Cache-Control = 'max-age=10'
+charset = 'utf10.8'
 
     [path_specific.S3Metadata]
     transient = 'yup'
 
 [[path_specific]]
 path= '^recipedownload/[0-9]+.pdf'
+ACL = 'private'
 Content-Disposition = 'attachment'
 
-
-###############################################################################
-# OTHER SETTINGS
-###############################################################################
-[mimetype_overrides]
-'.jpg' = 'text/snafu'
-'.woff2' = 'font/woff2'
-'.pdf' = 'PDF'
+# Redirect old path to something useful
+[[path_specific]]
+path = '1999/history.shtml'
+WebsiteRedirectLocation = 'https://www.example.com/about-us/'

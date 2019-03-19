@@ -5,9 +5,10 @@ venv: venv/bin/activate
 venv/bin/activate: requirements.txt
 	test -d venv || python3 -m venv venv
 	. venv/bin/activate && python3 -m pip install -r requirements.txt
+	touch -c venv/bin/activate
 
 # TODO: this needs to depend on all source files
-dist: venv
+dist: venv setup.py MANIFEST.in README.md $(shell find s3sup)
 	. venv/bin/activate && python3 -m pip install setuptools wheel twine
 	. venv/bin/activate && python3 setup.py sdist bdist_wheel
 
@@ -21,7 +22,7 @@ clean::
 	find . -name '*.pyc' -delete
 
 .PHONY: test
-test:: flake8 twine_check venv
+test:: venv flake8 twine_check
 	. venv/bin/activate && python3 -m unittest
 
 
