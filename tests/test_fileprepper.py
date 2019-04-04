@@ -32,6 +32,24 @@ class TestFixtureProj1(unittest.TestCase):
         }
         self.assertEqual(expected_attrs, f.attributes())
 
+    def test_toml_detected(self):
+        f = s3sup.fileprepper.FilePrepper(
+            self.project_root, 'ci-config.toml', self.rules)
+        self.assertEqual(
+            'application/toml; charset=utf-8', f.attributes()['Content-Type'])
+
+    def test_woff_detected(self):
+        f = s3sup.fileprepper.FilePrepper(
+            self.project_root, 'assets/fonts/Montserrat_400.woff', self.rules)
+        self.assertEqual(
+            'font/woff', f.attributes()['Content-Type'])
+
+    def test_woff2_detected(self):
+        f = s3sup.fileprepper.FilePrepper(
+            self.project_root, 'assets/fonts/Montserrat_400.woff2', self.rules)
+        self.assertEqual(
+            'font/woff2', f.attributes()['Content-Type'])
+
     def test_file_content_equal_attrs_differ(self):
         f1 = s3sup.fileprepper.FilePrepper(
             self.project_root, 'about-us/index.html', self.rules)

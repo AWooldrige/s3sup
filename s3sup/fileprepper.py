@@ -11,6 +11,11 @@ import humanize
 import s3sup.rules
 
 
+ADDITIONAL_MIMETYPES = {
+    '.toml': 'application/toml',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2'
+}
 TEXT_BASED_MIMETYPES = {
     'text/css',
     'text/csv',
@@ -18,6 +23,7 @@ TEXT_BASED_MIMETYPES = {
     'text/javascript',
     'text/ecmascript',
     'application/json',
+    'application/toml',
     'application/javascript',
     'application/ecmascript',
     'application/rtf',
@@ -66,6 +72,10 @@ class FilePrepper:
         }
         fext = pathlib.Path(self.path).suffix
         mime_type, encoding = mimetypes.guess_type(self.path)
+        try:
+            mime_type = ADDITIONAL_MIMETYPES[fext]
+        except KeyError:
+            pass
         try:
             mime_type = self.rules['mimetype_overrides'][fext]
         except KeyError:

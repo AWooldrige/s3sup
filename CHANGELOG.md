@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Prevent files being deleted on S3 even when they are removed locally.
    Supply command line option `--nodelete` or global configuration value
    `preserve_deleted_files`.
+ - Additional MIME type detection for TOML, WOFF and WOFF2 files.
 
 ### Changed
  - Perform preflight checks to ensure the S3 bucket exists before attempting to
