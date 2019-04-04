@@ -9,52 +9,6 @@ sys.path.insert(
 import s3sup.project  # noqa: E402
 import s3sup.catalogue  # noqa: E402
 
-SKELETON_TOML = """
-###############################################################################
-# GLOBAL SETTINGS
-###############################################################################
-# preserve_deleted_files = false   # Prevent S3 files being deleted
-# charset = 'utf-8'   # Specify default character encoding for text files
-
-###############################################################################
-# AWS SETTINGS
-###############################################################################
-
-[aws]
-region_name = ''  # E.g. 'eu-west-1'
-s3_bucket_name = '' # E.g. 'mys3websitebucketname'
-s3_project_root = ''  # Root location for project within S3, e.g. 'staging/'
-
-
-###############################################################################
-# PATH SPECIFIC SETTINGS
-#
-# If multiple [[path_specific]] entries match a path:
-#  * Directives are combined from all matching [[path_specific]] entries.
-#  * The last matching [[path_specific]] wins for equivalent directive keys.
-###############################################################################
-
-# Catch-all matcher for all files. Set a sensible default cache lifetime.
-[[path_specific]]
-path = '^.*$'
-Cache-Control = 'max-age=60'
-
-# Example: extend cache lifetime for certain PDFs and set additional headers
-# [[path_specific]]
-# path = '^recipedownload/[0-9]+.pdf'
-# Content-Disposition = 'attachment'
-# Cache-Control = 'max-age=120'
-
-
-###############################################################################
-# MIMETYPE OVERRIDES
-###############################################################################
-
-# Override file extension -> mimetype mappings
-# [mimetype_overrides]
-# '.woff2' = 'font/woff2'
-"""
-
 
 def common_options(f):
     """
@@ -108,7 +62,7 @@ def init(projectdir, verbose):
     if cf.exists():
         raise click.FileError(
             's3sup.toml', hint='s3sup configuration file already exists')
-    cf.write_text(SKELETON_TOML)
+    cf.write_bytes(s3sup.project.load_skeleton_s3sup_toml())
     click.echo('Skeleton configuration file created: {0}'.format(
         cf.absolute()))
 

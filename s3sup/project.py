@@ -1,6 +1,7 @@
 import os
 import functools
 import tempfile
+import pkgutil
 
 import boto3
 import botocore
@@ -11,6 +12,10 @@ import s3sup.catalogue
 import s3sup.fileprepper
 import s3sup.rules
 import s3sup.utils
+
+
+def load_skeleton_s3sup_toml():
+    return pkgutil.get_data(__package__, 'skeleton.s3sup.toml')
 
 
 class Project:

@@ -1,1 +1,2 @@
 include s3sup/rules.schema.json
+include s3sup/skeleton.s3sup.toml

@@ -156,25 +156,6 @@ class TestProjectSyncProjectChanges(unittest.TestCase):
         os.remove(tmpp)
 
 
-class TestProjectDefaultsWithEquivalentConf(unittest.TestCase):
-
-    @moto.mock_s3
-    def test_multiple_project_changes(self):
-        self.conn = boto3.resource('s3', region_name='eu-west-1')
-        self.conn.create_bucket(Bucket='www.example.com')
-
-        project_root_n = os.path.join(MODULE_DIR, 'fixture_proj_3_defaults')
-        pn = Project(project_root_n)
-        diff, new_remote_cat = pn.calculate_diff()
-        self.assertEqual(['index.html'], diff['upload']['new_files'])
-        pn.sync()
-
-        project_root = os.path.join(MODULE_DIR, 'fixture_proj_3.1_defaults')
-        p = Project(project_root)
-        diff, new_remote_cat = p.calculate_diff()
-        self.assertEqual(['index.html'], diff['unchanged'])
-
-
 class TestMultipleProjectConfigurations(unittest.TestCase):
 
     def create_example_bucket(self):
@@ -279,6 +260,38 @@ s3_bucket_name = 'www.example.com'
 
         self.assertIn('index.html', all_bucket_keys(b))
         self.assertIn('assets/landscape.62.png', all_bucket_keys(b))
+
+    @moto.mock_s3
+    def test_s3_project_root_can_be_set_empty_string_or_default(self):
+        b = self.create_example_bucket()
+        conf = '''
+[aws]
+region_name = 'eu-west-1'
+s3_bucket_name = 'www.example.com'
+'''
+        with tempfile.TemporaryDirectory() as tmpd:
+            project_root = self.create_projdir_with_conf(
+                'skeleton_proj_1.0', tmpd, conf)
+            p = Project(project_root)
+            diff, new_remote_cat = p.calculate_diff()
+            p.sync()
+        self.assertIn('index.html', diff['upload']['new_files'])
+        self.assertIn('index.html', all_bucket_keys(b))
+
+        conf = '''
+[aws]
+region_name = 'eu-west-1'
+s3_bucket_name = 'www.example.com'
+s3_project_root = ''
+'''
+        with tempfile.TemporaryDirectory() as tmpd:
+            project_root = self.create_projdir_with_conf(
+                'skeleton_proj_1.0', tmpd, conf)
+            p = Project(project_root)
+            diff, new_remote_cat = p.calculate_diff()
+            p.sync()
+        self.assertIn('index.html', diff['unchanged'])
+        self.assertIn('index.html', all_bucket_keys(b))
 
 
 if __name__ == '__main__':
