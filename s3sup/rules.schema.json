@@ -124,6 +124,10 @@
             "description": "Which mimetypes should have charset appended to Content-Type",
             "type": "string",
             "minLength": 1
+        },
+        "preserve_deleted_files": {
+            "description": "Don't delete files from S3 even if they've been deleted locally.",
+            "type": "boolean"
         }
     },
     "additionalProperties": false

@@ -15,7 +15,8 @@ import s3sup.utils
 
 class Project:
 
-    def __init__(self, local_project_root, dryrun=False, verbose=True):
+    def __init__(self, local_project_root, dryrun=False,
+                 preserve_deleted_files=False, verbose=True):
         self.dryrun = dryrun
         self.verbose = verbose
         self.local_project_root = local_project_root
@@ -33,7 +34,16 @@ class Project:
             raise click.FileError(
                 os.path.join(local_project_root, 's3sup.toml'),
                 hint=error_text)
+
+        self._preserve_deleted_files = preserve_deleted_files
+        try:
+            self._preserve_deleted_files = (
+                preserve_deleted_files or self.rules['preserve_deleted_files'])
+        except KeyError:
+            pass
+
         self._fp_cache = {}
+        self.local_preflight_checks()
 
     def _boto_bucket(self):
         s = boto3.session.Session()
@@ -48,7 +58,7 @@ class Project:
             pass
         r = s.resource(service_name='s3', **res_args)
         b = r.Bucket(self.rules['aws']['s3_bucket_name'])
-        return b
+        return r, b
 
     def file_prepper_wrapped(self, path):
         try:
@@ -61,9 +71,32 @@ class Project:
     def _local_fs_path(self, rel_path):
         return os.path.join(self.local_project_root, rel_path)
 
+    def local_preflight_checks(self):
+        """
+        Can't stop things going wrong during the upload, but having a good poke
+        round catches most problems.
+        """
+        return True
+
+    def remote_preflight_checks(self):
+        """
+        Can't stop things going wrong during the upload, but having a good poke
+        round catches most problems.
+        """
+        rmt_cat_fp = self.file_prepper_wrapped('.s3sup.write_test')
+        rsrc, b = self._boto_bucket()
+        o = b.Object(rmt_cat_fp.s3_path())
+        try:
+            o.put(Body='Can s3sup write to bucket?', ACL='private')
+        except rsrc.meta.client.exceptions.NoSuchBucket:
+            raise click.ClickException('S3 bucket does not exist: {0}'.format(
+                self.rules['aws']['s3_bucket_name']))
+        o.delete()
+
     @functools.lru_cache(maxsize=8)
     def local_catalogue(self):
-        local_cat = s3sup.catalogue.Catalogue()
+        local_cat = s3sup.catalogue.Catalogue(
+            preserve_deleted_files=self._preserve_deleted_files)
         for root, dirs, files in os.walk(self.local_project_root):
             for f in files:
                 if f == 's3sup.toml':
@@ -78,10 +111,11 @@ class Project:
 
     @functools.lru_cache(maxsize=8)
     def get_remote_catalogue(self):
-        b = self._boto_bucket()
+        _, b = self._boto_bucket()
         rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
         f = b.Object(rmt_cat_fp.s3_path())
-        remote_cat = s3sup.catalogue.Catalogue()
+        remote_cat = s3sup.catalogue.Catalogue(
+            preserve_deleted_files=self._preserve_deleted_files)
 
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
@@ -108,7 +142,7 @@ class Project:
         os.close(hndl)
         catalogue.to_csv(tmpp)
         rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
-        b = self._boto_bucket()
+        _, b = self._boto_bucket()
         o = b.Object(rmt_cat_fp.s3_path())
         with open(tmpp, 'rb') as lf:
             o.put(Body=lf, ACL='private')
@@ -117,11 +151,13 @@ class Project:
     def calculate_diff(self):
         local_cat = self.local_catalogue()
         remote_cat = self.get_remote_catalogue()
-        diff = local_cat.diff_dict(remote_cat)
-        return diff
+        diff, new_remote_cat = local_cat.diff_dict(remote_cat)
+        return (diff, new_remote_cat)
 
     def sync(self):
-        changes = s3sup.catalogue.change_list(self.calculate_diff())
+        self.remote_preflight_checks()
+        diff, new_remote_cat = self.calculate_diff()
+        changes = s3sup.catalogue.change_list(diff)
         changes_with_prep = [
             (cr, p, self.file_prepper_wrapped(p)) for cr, p in changes]
 
@@ -133,7 +169,7 @@ class Project:
                 'Not making any changes as this is a dryrun.', fg='blue'))
             return changes
 
-        b = self._boto_bucket()
+        _, b = self._boto_bucket()
 
         def display_current(item):
             if item is None:
@@ -157,12 +193,10 @@ class Project:
                 if cr == s3sup.catalogue.ChangeReason['NEW_FILE']:
                     with fp.content_fileobj() as lf:
                         o.put(Body=lf, **fp.attributes_as_boto_args())
-
-                if cr == s3sup.catalogue.ChangeReason['CONTENT_CHANGED']:
+                elif cr == s3sup.catalogue.ChangeReason['CONTENT_CHANGED']:
                     with fp.content_fileobj() as lf:
                         o.put(Body=lf, **fp.attributes_as_boto_args())
-
-                if cr == s3sup.catalogue.ChangeReason['ATTRIBUTES_CHANGED']:
+                elif cr == s3sup.catalogue.ChangeReason['ATTRIBUTES_CHANGED']:
                     o.copy_from(
                         CopySource={
                             'Bucket': self.rules['aws']['s3_bucket_name'],
@@ -170,11 +204,12 @@ class Project:
                         MetadataDirective='REPLACE',
                         TaggingDirective='REPLACE',
                         **fp.attributes_as_boto_args())
-
-                if cr == s3sup.catalogue.ChangeReason['DELETED']:
+                elif cr == s3sup.catalogue.ChangeReason['DELETED']:
                     o.delete()
+                else:
+                    raise Exception('Unknown ChangeReason: {0}'.format(cr))
 
-        self.write_remote_catalogue(self.local_catalogue())
+        self.write_remote_catalogue(new_remote_cat)
         return changes
 
     def print_summary(self):

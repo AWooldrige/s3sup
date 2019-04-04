@@ -28,10 +28,14 @@ New features
  * [ ] Parallelise S3 operations.
 
 Improvements
+ * [ ] Add tests to make sure performant (cycles/mem) with huge projects
+ * [ ] Upload new files in order: others, CSS, JS, HTML
+ * [ ] Add compression to s3sup catalogue file.
  * [ ] If no projectdir provided, walk up dirs to find s3sup.toml, like git.
  * [ ] Detect when S3 bucket doesn't exist. Stacktrace at the moment.
+ * [ ] Add retry to S3 uploads.
+ * [ ] Add compression to s3sup catalogue file.
  * [ ] Add python 3 type hints.
- * [ ] Add retry to S3 uploads
  * [ ] Sort out usage of temporary files. Make sure tests and main source don't
    spew files to `/tmp` in error conditions.
  * [ ] Standardise on using pathlib.Path where possible.

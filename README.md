@@ -125,6 +125,23 @@ that s3sup has made. E.g.
     '.woff2' = 'font/woff2'
     '.toml' = 'application/toml'
 
+### Global configuration settings
+These settings must be placed at the top of the `s3sup.toml` file otherwise
+schema validation errors will occur (TOML interprets them as as belonging to
+the previous section):
+
+ * `preserve_deleted_files`: Boolean, either `true` or `false` (default:
+   `false`). Setting to `true` will prevent files being deleted from S3 when
+   they are deleted in the local project. This can be useful if your site has a
+   long cache lifetime and you don't want cached pages to reference
+   stylesheets/JavaScript files that suddenly disappear. This feature only
+   prevents file deletions, it doesn't prevent file contents being overwritten
+   if updated locally. This can also be achieved by supplying `--nodelete` as a
+   command line option.
+ * `charset`: String (default: "utf-8"). Specify the character encoding of text
+   files within this s3sup project. The charset is appended to `Content-Type`
+   header. This can also be overriden on a `[[path_specific]]` basis.
+
 
 ### Example configuration file
 The following example configuration:

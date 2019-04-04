@@ -9,8 +9,13 @@ sys.path.insert(
 import s3sup.project  # noqa: E402
 import s3sup.catalogue  # noqa: E402
 
-
 SKELETON_TOML = """
+###############################################################################
+# GLOBAL SETTINGS
+###############################################################################
+# preserve_deleted_files = false   # Prevent S3 files being deleted
+# charset = 'utf-8'   # Specify default character encoding for text files
+
 ###############################################################################
 # AWS SETTINGS
 ###############################################################################
@@ -36,13 +41,13 @@ Cache-Control = 'max-age=60'
 
 # Example: extend cache lifetime for certain PDFs and set additional headers
 # [[path_specific]]
-# path= '^recipedownload/[0-9]+.pdf'
+# path = '^recipedownload/[0-9]+.pdf'
 # Content-Disposition = 'attachment'
 # Cache-Control = 'max-age=120'
 
 
 ###############################################################################
-# OTHER SETTINGS
+# MIMETYPE OVERRIDES
 ###############################################################################
 
 # Override file extension -> mimetype mappings
@@ -52,6 +57,9 @@ Cache-Control = 'max-age=60'
 
 
 def common_options(f):
+    """
+    Common command line options used by ALL s3sup commands
+    """
     options = [
         click.option(
             '-p', '--projectdir', default='.',
@@ -59,6 +67,22 @@ def common_options(f):
         click.option(
             '-v', '--verbose', is_flag=True,
             help='Output running commentary.')
+    ]
+    return functools.reduce(lambda x, opt: opt(x), options, f)
+
+
+def options_for_remotes(f):
+    """
+    Command line options only used by s3sup commands that compare with the
+    remote S3 catalogue. E.g. upload and status.
+    """
+    options = [
+        click.option(
+            '-d', '--dryrun', is_flag=True,
+            help='Simulate changes to be made. Do not modify files on S3.'),
+        click.option(
+            '-n', '--nodelete', is_flag=True,
+            help='Do not delete any files on S3, add/modify operations only.')
     ]
     return functools.reduce(lambda x, opt: opt(x), options, f)
 
@@ -91,13 +115,15 @@ def init(projectdir, verbose):
 
 @cli.command()
 @common_options
-def status(projectdir, verbose):
+@options_for_remotes
+def status(projectdir, verbose, dryrun, nodelete):
     """
     Show S3 changes required. Read-only.
     """
     click.echo('S3 site uploader. Using:')
-    # Shouldn't be calling anything that needs dryrun, but just to be safe!
-    p = s3sup.project.Project(projectdir, dryrun=True, verbose=verbose)
+    p = s3sup.project.Project(
+        projectdir, dryrun=dryrun, preserve_deleted_files=nodelete,
+        verbose=verbose)
     if verbose or projectdir != '.':
         click.echo(' * Local project directory: {0}'.format(projectdir))
 
@@ -117,7 +143,7 @@ def status(projectdir, verbose):
         p.rules['aws']['s3_bucket_name'], s3_root))
 
     click.echo('')
-    diff = p.calculate_diff()
+    diff, _ = p.calculate_diff()
     s3sup.catalogue.print_diff_summary(diff, verbose=True)
 
 
@@ -142,18 +168,19 @@ def inspect(local_file, projectdir, verbose):
 
 @cli.command()
 @common_options
-@click.option(
-    '-d', '--dryrun', is_flag=True,
-    help='Simulate changes to be made. Don\'t modify files on S3.')
-def upload(projectdir, verbose, dryrun):
+@options_for_remotes
+def upload(projectdir, verbose, dryrun, nodelete):
     """
     Synchronise local static site to S3.
 
     Use --dryrun to test behaviour without changes actually being made to S3.
     Or use "s3sup status".
     """
-    p = s3sup.project.Project(projectdir, dryrun=dryrun, verbose=verbose)
-    diff = p.calculate_diff()
+    click.echo('See mee?', err=True)
+    p = s3sup.project.Project(
+        projectdir, dryrun=dryrun, preserve_deleted_files=nodelete,
+        verbose=verbose)
+    diff, _ = p.calculate_diff()
     s3sup.catalogue.print_diff_summary(diff, verbose=verbose)
     p.sync()
     click.echo(click.style('Done!', fg='green'))

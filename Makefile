@@ -22,7 +22,9 @@ clean::
 	find . -name '*.pyc' -delete
 
 .PHONY: test
-test:: venv flake8 twine_check
+test:: venv flake8 twine_check unittest
+
+unittest:: venv
 	. venv/bin/activate && python3 -m unittest
 
 

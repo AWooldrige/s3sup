@@ -1,6 +1,8 @@
 import os
 import tempfile
 import unittest
+import pathlib
+import shutil
 
 import boto3
 import botocore
@@ -12,6 +14,10 @@ MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 os.environ['AWS_ACCESS_KEY_ID'] = 'FOO'
 os.environ['AWS_SECRET_ACCESS_KEY'] = 'BAR'
+
+
+def all_bucket_keys(bucket):
+    return ([o.key for o in bucket.objects.all()])
 
 
 class TestProject(unittest.TestCase):
@@ -157,15 +163,122 @@ class TestProjectDefaultsWithEquivalentConf(unittest.TestCase):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
         self.conn.create_bucket(Bucket='www.example.com')
 
-        project_root_n = os.path.join(MODULE_DIR, 'fixture_proj_3.1_defaults')
+        project_root_n = os.path.join(MODULE_DIR, 'fixture_proj_3_defaults')
         pn = Project(project_root_n)
-        self.assertEqual(
-            ['index.html'], pn.calculate_diff()['upload']['new_files'])
+        diff, new_remote_cat = pn.calculate_diff()
+        self.assertEqual(['index.html'], diff['upload']['new_files'])
         pn.sync()
 
-        project_root = os.path.join(MODULE_DIR, 'fixture_proj_3_defaults')
+        project_root = os.path.join(MODULE_DIR, 'fixture_proj_3.1_defaults')
         p = Project(project_root)
-        self.assertEqual(['index.html'], p.calculate_diff()['unchanged'])
+        diff, new_remote_cat = p.calculate_diff()
+        self.assertEqual(['index.html'], diff['unchanged'])
+
+
+class TestMultipleProjectConfigurations(unittest.TestCase):
+
+    def create_example_bucket(self):
+        self.conn = boto3.resource('s3', region_name='eu-west-1')
+        b = self.conn.create_bucket(Bucket='www.example.com')
+        return b
+
+    def create_projdir_with_conf(self, skeleton_dir_name, new_dir, config):
+        original_dir = pathlib.Path(
+            MODULE_DIR).joinpath(skeleton_dir_name).resolve()
+        new_dir_path = pathlib.Path(new_dir).joinpath('proj')
+        shutil.copytree(original_dir, new_dir_path)
+        cf = pathlib.Path(new_dir_path).joinpath('s3sup.toml')
+        cf.write_text(config)
+        return new_dir_path
+
+    @moto.mock_s3
+    def test_basic_upload(self):
+        b = self.create_example_bucket()
+        conf = '''
+[aws]
+region_name = 'eu-west-1'
+s3_bucket_name = 'www.example.com'
+'''
+        with tempfile.TemporaryDirectory() as tmpd:
+            project_root = self.create_projdir_with_conf(
+                'skeleton_proj_1.0', tmpd, conf)
+            p = Project(project_root)
+            p.sync()
+        self.assertIn('assets/landscape.62.png', all_bucket_keys(b))
+        # Check default headers
+        o = b.Object('index.html')
+        self.assertEqual('max-age=10', o.cache_control)
+
+    @moto.mock_s3
+    def test_nodelete(self):
+        b = self.create_example_bucket()
+        conf = '''
+preserve_deleted_files = true
+
+[aws]
+region_name = 'eu-west-1'
+s3_bucket_name = 'www.example.com'
+'''
+        with tempfile.TemporaryDirectory() as tmpd:
+            project_root = self.create_projdir_with_conf(
+                'skeleton_proj_1.0', tmpd, conf)
+            p = Project(project_root)
+            p.sync()
+
+        # First time with nodelete
+        with tempfile.TemporaryDirectory() as tmpd:
+            project_root = self.create_projdir_with_conf(
+                'skeleton_proj_1.1', tmpd, conf)
+            p = Project(project_root)
+            p.sync()
+
+        self.assertIn('index.html', all_bucket_keys(b))
+        self.assertIn('assets/landscape.62.png', all_bucket_keys(b))
+
+        # Second time without nodelete
+        conf = '''
+[aws]
+region_name = 'eu-west-1'
+s3_bucket_name = 'www.example.com'
+'''
+        with tempfile.TemporaryDirectory() as tmpd:
+            project_root = self.create_projdir_with_conf(
+                'skeleton_proj_1.1', tmpd, conf)
+            p = Project(project_root)
+            p.sync()
+
+        self.assertIn('index.html', all_bucket_keys(b))
+        self.assertNotIn('assets/landscape.62.png', all_bucket_keys(b))
+
+    @moto.mock_s3
+    def test_nodelete_supplied_at_runtime_overrides_conf(self):
+        """
+        The --nodelete functionality can be specified in both the configuration
+        file and on the command line. The command line one should take priority
+        """
+        b = self.create_example_bucket()
+        conf = '''
+preserve_deleted_files = false
+
+[aws]
+region_name = 'eu-west-1'
+s3_bucket_name = 'www.example.com'
+'''
+        with tempfile.TemporaryDirectory() as tmpd:
+            project_root = self.create_projdir_with_conf(
+                'skeleton_proj_1.0', tmpd, conf)
+            p = Project(project_root)
+            p.sync()
+
+        # True in conf but False by runtime should == False
+        with tempfile.TemporaryDirectory() as tmpd:
+            project_root = self.create_projdir_with_conf(
+                'skeleton_proj_1.1', tmpd, conf)
+            p = Project(project_root, preserve_deleted_files=True)
+            p.sync()
+
+        self.assertIn('index.html', all_bucket_keys(b))
+        self.assertIn('assets/landscape.62.png', all_bucket_keys(b))
 
 
 if __name__ == '__main__':

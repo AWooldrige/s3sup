@@ -17,6 +17,20 @@ class BaseSchemaTestCase(unittest.TestCase):
             self.schema)
 
 
+class ValidatePreserveDeletedFiles(BaseSchemaTestCase):
+
+    def test_not_required(self):
+        self.assertValid({})
+
+    def test_can_be_empty_object(self):
+        self.assertValid({"preserve_deleted_files": False})
+
+    def test_cannot_be_other_types(self):
+        self.assertInvalid({"preserve_deleted_files": "true"})
+        self.assertInvalid({"preserve_deleted_files": [False]})
+        self.assertInvalid({"preserve_deleted_files": 1})
+
+
 class ValidateMimetypeOverrides(BaseSchemaTestCase):
 
     def test_not_required(self):
