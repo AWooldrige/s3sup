@@ -28,7 +28,7 @@ def common_options(f):
 def options_for_remotes(f):
     """
     Command line options only used by s3sup commands that compare with the
-    remote S3 catalogue. E.g. upload and status.
+    remote S3 catalogue. E.g. push and status.
     """
     options = [
         click.option(
@@ -41,9 +41,38 @@ def options_for_remotes(f):
     return functools.reduce(lambda x, opt: opt(x), options, f)
 
 
+class AliasedGroup(click.Group):
+    """
+    Provides shortcut commands, allowing 'st' to be typed for 'status'.
+    Skeleton class taken straight from the click documentation.
+    """
+
+    def get_command(self, ctx, cmd_name):
+        rv = click.Group.get_command(self, ctx, cmd_name)
+        if rv is not None:
+            return rv
+        commands = self.list_commands(ctx)
+        aliases = {
+            'upload': 'push',
+            'sync': 'push'
+        }
+        all_commands = commands + [alias for alias in aliases]
+        matches = [x for x in all_commands if x.startswith(cmd_name)]
+        if not matches:
+            return None
+        elif len(matches) == 1:
+            try:
+                match = aliases[matches[0]]
+            except KeyError:
+                match = matches[0]
+            return click.Group.get_command(self, ctx, match)
+        ctx.fail('Multiple commands matched "{0}": {1}'.format(
+            cmd_name, ', '.join(sorted(matches))))
+
+
 # Would rather add options to click.group(), but this doesn't work as intended:
 # https://stackoverflow.com/questions/52144383/
-@click.group()
+@click.command(cls=AliasedGroup)
 def cli():
     """
     s3sup - Amazon S3 static site uploader
@@ -106,7 +135,7 @@ def status(projectdir, verbose, dryrun, nodelete):
 @common_options
 def inspect(local_file, projectdir, verbose):
     """
-    Show calculated attributes (e.g. headers) before upload.
+    Show calculated attributes (e.g. headers) before push.
     """
     p = s3sup.project.Project(projectdir, dryrun=True, verbose=verbose)
     p.print_summary()
@@ -123,14 +152,15 @@ def inspect(local_file, projectdir, verbose):
 @cli.command()
 @common_options
 @options_for_remotes
-def upload(projectdir, verbose, dryrun, nodelete):
+def push(projectdir, verbose, dryrun, nodelete):
     """
     Synchronise local static site to S3.
 
     Use --dryrun to test behaviour without changes actually being made to S3.
     Or use "s3sup status".
+
+    This command has two other aliases: upload or sync.
     """
-    click.echo('See mee?', err=True)
     p = s3sup.project.Project(
         projectdir, dryrun=dryrun, preserve_deleted_files=nodelete,
         verbose=verbose)

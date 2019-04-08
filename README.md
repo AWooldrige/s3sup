@@ -45,7 +45,7 @@ Check what changes s3sup thinks needs to be made to S3:
 
 Then upload changes:
 
-    s3sup upload
+    s3sup push
 
 
 ## Configuration file

@@ -99,6 +99,21 @@ class TestStatus(S3supCliTestCaseBase):
         self.assertEqual([], [o for o in b.objects.all()])
 
     @moto.mock_s3
+    def test_with_a_shortened_command_alias(self):
+        b = self.create_example_bucket()
+        project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
+        runner = CliRunner(mix_stderr=False)
+        result = runner.invoke(
+            s3sup.scripts.s3sup.cli,
+            ['st', '-p', project_root, '-v'],
+            mix_stderr=False)
+        self.assertSuccess(result)
+        self.assertIn('new: 11 files', result.stdout)
+
+        # Should be no objects uploaded after running status
+        self.assertEqual([], [o for o in b.objects.all()])
+
+    @moto.mock_s3
     def test_with_a_minimal_project(self):
         b = self.create_example_bucket()
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_2_minimal')
@@ -173,6 +188,21 @@ class TestUpload(S3supCliTestCaseBase):
         result = runner.invoke(
             s3sup.scripts.s3sup.cli,
             ['upload', '-p', project_root])
+        self.assertIn('new: 11 files', result.stdout)
+        self.assertSuccess(result)
+
+        # Check one object
+        o = b.Object('staging/index.html')
+        self.assertInObj('Hello world!', o)
+
+    @moto.mock_s3
+    def test_new_project_with_push_command_alias(self):
+        b = self.create_example_bucket()
+        project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
+        runner = CliRunner()
+        result = runner.invoke(
+            s3sup.scripts.s3sup.cli,
+            ['push', '-p', project_root])
         self.assertIn('new: 11 files', result.stdout)
         self.assertSuccess(result)
 
