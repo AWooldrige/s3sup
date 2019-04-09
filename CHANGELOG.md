@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2019-04-09
 ### Added
  - Prevent files being deleted on S3 even when they are removed locally.
    Supply command line option `--nodelete` or global configuration value
@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Perform preflight checks to ensure the S3 bucket exists before attempting to
    upload. Previously a boto3 stack trace would have been presented at the
    start of upload.
+ - Improved README and command line help text.
 
 ### Fixed
  - Make S3 attribute changes only once, previously they were being repeated
