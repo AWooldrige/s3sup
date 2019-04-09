@@ -1,0 +1,150 @@
+diff --git a/requirements.txt b/requirements.txt
+index e985667..95c8b2c 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -3,6 +3,8 @@ click>=7,<10
+ humanize>=0.4,<1
+ inflect>=2,<3
+ jsonschema>=2,<4
++structlog>=19
++colorama
+ toml>=0.10,<1
+ requests>=2.12
+ flake8
+diff --git a/s3sup/project.py b/s3sup/project.py
+index 29f41e9..d8fae22 100644
+--- a/s3sup/project.py
++++ b/s3sup/project.py
+@@ -7,6 +7,7 @@ import boto3
+ import botocore
+ import click
+ import humanize
++import structlog
+ 
+ import s3sup.catalogue
+ import s3sup.fileprepper
+@@ -14,6 +15,9 @@ import s3sup.rules
+ import s3sup.utils
+ 
+ 
++logger = structlog.get_logger()
++
++
+ def load_skeleton_s3sup_toml():
+     return pkgutil.get_data(__package__, 'skeleton.s3sup.toml')
+ 
+@@ -25,17 +29,22 @@ class Project:
+         self.dryrun = dryrun
+         self.verbose = verbose
+         self.local_project_root = local_project_root
++        self.local_project_root_abs = os.path.abspath(local_project_root)
++        self.log = logger.bind(
++            project=self.local_project_root_abs, dryrun=dryrun,
++            verbose=verbose, preserve_deleted_files=preserve_deleted_files)
++        s3sup_conf_path = os.path.join(local_project_root, 's3sup.toml')
+         try:
+-            self.rules = s3sup.rules.load_rules(os.path.join(
+-                local_project_root, 's3sup.toml'))
++            self.rules = s3sup.rules.load_rules(s3sup_conf_path)
+         except FileNotFoundError:
++            log.error('No s3sup conf path: {0}'.format(s3sup_conf_path))
+             error_text = (
+                 '\n{0} not an s3sup project directory (no s3sup.toml found). '
+                 'Either:\n'
+                 ' * Change to an s3sup project directory before running.\n'
+                 ' * Supply project directory using -p/--projectdir.\n'
+                 ' * Create a new s3sup project direction using "s3sup init".'
+-            ).format(os.path.abspath(local_project_root))
++            ).format(self.local_project_root_abs)
+             raise click.FileError(
+                 os.path.join(local_project_root, 's3sup.toml'),
+                 hint=error_text)
+@@ -67,8 +76,11 @@ class Project:
+ 
+     def file_prepper_wrapped(self, path):
+         try:
+-            return self._fp_cache[path]
++            cached = self._fp_cache[path]
++            self.log.debug('Using cached FilePrepper for: {0}'.format(path))
++            return cached
+         except KeyError:
++            self.log.debug('Creating new FilePrepper for: {0}'.format(path))
+             self._fp_cache[path] = s3sup.fileprepper.FilePrepper(
+                 self.local_project_root, path, self.rules)
+         return self._fp_cache[path]
+diff --git a/s3sup/scripts/s3sup.py b/s3sup/scripts/s3sup.py
+index 6523c87..60b645d 100644
+--- a/s3sup/scripts/s3sup.py
++++ b/s3sup/scripts/s3sup.py
+@@ -3,6 +3,9 @@ import sys
+ import functools
+ import click
+ import pathlib
++import logging
++
++import structlog
+ 
+ sys.path.insert(
+     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+@@ -10,6 +13,23 @@ import s3sup.project  # noqa: E402
+ import s3sup.catalogue  # noqa: E402
+ 
+ 
++logger = structlog.get_logger()
++
++
++def configure_logging(command, verbose):
++    lvl = logging.CRITICAL
++    if verbose:
++        lvl = logging.DEBUG
++    logging.basicConfig(level=lvl)
++    structlog.configure(
++        context_class=structlog.threadlocal.wrap_dict(dict),
++        logger_factory=structlog.stdlib.LoggerFactory()
++    )
++    log = logger.new(s3sup_command=command)
++    log.debug('Running s3sup {0}'.format(command))
++    return log
++
++
+ def common_options(f):
+     """
+     Common command line options used by ALL s3sup commands
+@@ -57,6 +77,7 @@ def init(projectdir, verbose):
+     """
+     Create a skeleton s3sup.toml configuration file.
+     """
++    log = configure_logging('init', verbose)
+     # Check file doesn't already exist
+     cf = pathlib.Path(os.path.join(projectdir, 's3sup.toml'))
+     if cf.exists():
+@@ -74,6 +95,7 @@ def status(projectdir, verbose, dryrun, nodelete):
+     """
+     Show S3 changes required. Read-only.
+     """
++    log = configure_logging('status', verbose)
+     click.echo('S3 site uploader. Using:')
+     p = s3sup.project.Project(
+         projectdir, dryrun=dryrun, preserve_deleted_files=nodelete,
+@@ -108,9 +130,12 @@ def inspect(local_file, projectdir, verbose):
+     """
+     Show calculated attributes (e.g. headers) before upload.
+     """
++    log = configure_logging('inspect', verbose)
+     p = s3sup.project.Project(projectdir, dryrun=True, verbose=verbose)
+     p.print_summary()
+     for f in local_file:
++        log.bind(file_path=f)
++        log.debug('Attempting to inspect')
+         click.echo()
+         try:
+             fp = p.file_prepper_wrapped(f)
+@@ -130,7 +155,7 @@ def upload(projectdir, verbose, dryrun, nodelete):
+     Use --dryrun to test behaviour without changes actually being made to S3.
+     Or use "s3sup status".
+     """
+-    click.echo('See mee?', err=True)
++    log = configure_logging('upload', verbose)
+     p = s3sup.project.Project(
+         projectdir, dryrun=dryrun, preserve_deleted_files=nodelete,
+         verbose=verbose)

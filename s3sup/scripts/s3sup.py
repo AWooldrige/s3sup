@@ -17,18 +17,19 @@ def common_options(f):
     options = [
         click.option(
             '-p', '--projectdir', default='.',
-            help='Local s3sup project directory, containing s3sup.toml.'),
+            help=('Specify local s3sup static site directory (containing '
+                  's3sup.toml). By default the current directory is used.')),
         click.option(
             '-v', '--verbose', is_flag=True,
-            help='Output running commentary.')
+            help='Output more informational messages than normal.')
     ]
     return functools.reduce(lambda x, opt: opt(x), options, f)
 
 
 def options_for_remotes(f):
     """
-    Command line options only used by s3sup commands that compare with the
-    remote S3 catalogue. E.g. push and status.
+    Command line options only used by s3sup commands that interact with S3.
+    E.g. push and status.
     """
     options = [
         click.option(
@@ -36,7 +37,9 @@ def options_for_remotes(f):
             help='Simulate changes to be made. Do not modify files on S3.'),
         click.option(
             '-n', '--nodelete', is_flag=True,
-            help='Do not delete any files on S3, add/modify operations only.')
+            help=('Do not delete any files on S3, add/modify operations only. '
+                  'Alternatively set "preserve_deleted_files" '
+                  'in s3sup.toml.')),
     ]
     return functools.reduce(lambda x, opt: opt(x), options, f)
 
@@ -84,7 +87,7 @@ def cli():
 @common_options
 def init(projectdir, verbose):
     """
-    Create a skeleton s3sup.toml configuration file.
+    Create a skeleton s3sup.toml in the current directory.
     """
     # Check file doesn't already exist
     cf = pathlib.Path(os.path.join(projectdir, 's3sup.toml'))
@@ -101,7 +104,7 @@ def init(projectdir, verbose):
 @options_for_remotes
 def status(projectdir, verbose, dryrun, nodelete):
     """
-    Show S3 changes required. Read-only.
+    Show S3 changes that will be made on next push.
     """
     click.echo('S3 site uploader. Using:')
     p = s3sup.project.Project(
@@ -135,7 +138,7 @@ def status(projectdir, verbose, dryrun, nodelete):
 @common_options
 def inspect(local_file, projectdir, verbose):
     """
-    Show calculated attributes (e.g. headers) before push.
+    Show calculated metadata for individual files.
     """
     p = s3sup.project.Project(projectdir, dryrun=True, verbose=verbose)
     p.print_summary()

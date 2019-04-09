@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Additional MIME type detection for TOML, WOFF and WOFF2 files.
 
 ### Changed
- - `s3sup upload` renamed to `push` for consistency with with command line tool
-   best practice. Aliases `upload` and `sync` added to maintain backwards
+ - `s3sup upload` renamed to `push` for consistency with command line tool best
+   practice. Aliases `upload` and `sync` added to maintain backwards
    compatibility.
  - Perform preflight checks to ensure the S3 bucket exists before attempting to
    upload. Previously a boto3 stack trace would have been presented at the
