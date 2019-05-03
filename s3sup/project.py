@@ -116,28 +116,48 @@ class Project:
 
     @functools.lru_cache(maxsize=8)
     def get_remote_catalogue(self):
-        _, b = self._boto_bucket()
-        rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
-        f = b.Object(rmt_cat_fp.s3_path())
         remote_cat = s3sup.catalogue.Catalogue(
             preserve_deleted_files=self._preserve_deleted_files)
+
+        _, b = self._boto_bucket()
+        old_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
+        old_f = b.Object(old_cat_fp.s3_path())
+
+        new_cat_fp = self.file_prepper_wrapped('.s3sup.cat')
+        new_f = b.Object(new_cat_fp.s3_path())
 
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
         try:
-            f.download_file(tmpp)
-            remote_cat.from_csv(tmpp)
+            new_f.download_file(tmpp)
+            remote_cat.from_sqlite(tmpp)
         except botocore.exceptions.NoCredentialsError:
             raise click.UsageError(
                 'Cannot find AWS credentials.\n -> Configure AWS credentials '
-                ' using any mthod that the underlying boto3 library supports:'
+                ' using any method that the underlying boto3 library supports:'
                 '\n -> https://boto3.amazonaws.com/v1/documentation/'
                 'api/latest/guide/configuration.html')
         except botocore.exceptions.ClientError:
             if self.verbose:
                 click.echo(
-                    'Project not uploaded before (no {0} on S3).'.format(
-                        rmt_cat_fp.s3_path()))
+                    ('Could not find SQLite based remote catalogue on S3 '
+                     '(expected at {0}).').format(new_cat_fp.s3_path()))
+            try:
+                old_f.download_file(tmpp)
+                remote_cat.from_csv(tmpp)
+                click.echo(click.style((
+                    'WARNING: After the next s3sup push, do not attempt to '
+                    'use older versions of s3sup (0.3.0 or below) with this '
+                    'project, as they will no longer be able to read the '
+                    'remote catalogue.'), fg='blue'))
+            except botocore.exceptions.ClientError:
+                if self.verbose:
+                    click.echo(
+                        ('Could not find older CSV based remote catalogue on '
+                         'S3 either (expected at {0}). This indicates the '
+                         'project has never been pushed to S3 before.').format(
+                            old_cat_fp.s3_path()))
+                pass
             pass
         os.remove(tmpp)
         return remote_cat
@@ -145,13 +165,25 @@ class Project:
     def write_remote_catalogue(self, catalogue):
         hndl, tmpp = tempfile.mkstemp()
         os.close(hndl)
-        catalogue.to_csv(tmpp)
-        rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
+        catalogue.to_sqlite(tmpp)
+        rmt_cat_fp = self.file_prepper_wrapped('.s3sup.cat')
         _, b = self._boto_bucket()
         o = b.Object(rmt_cat_fp.s3_path())
         with open(tmpp, 'rb') as lf:
             o.put(Body=lf, ACL='private')
         os.remove(tmpp)
+
+        # Deliberately break older s3sup clients <= 0.3.0.
+        # This file even needs uploading even for projects that have never used
+        # the old format, just in-case an old version of s3sup is used on it
+        # in the future (perhaps if part of a CI/CD system is used).
+        old_rmt_cat_fp = self.file_prepper_wrapped('.s3sup.catalogue.csv')
+        the_breaker = (
+            b'\xF9\xF9This is a deliberately corrupt old version of the s3sup '
+            b'catalogue format It is not used any more and this file is only '
+            b'here to cause s3sup clients <= 0.3.0 to fail, rather than have '
+            b'them try to upload everything again.')
+        b.Object(old_rmt_cat_fp.s3_path()).put(Body=the_breaker, ACL='private')
 
     def calculate_diff(self):
         local_cat = self.local_catalogue()
@@ -171,7 +203,7 @@ class Project:
 
         if self.dryrun:
             click.echo(click.style(
-                'Not making any changes as this is a dryrun.', fg='blue'))
+                'Not making any changes as this is a dry run.', fg='blue'))
             return changes
 
         _, b = self._boto_bucket()

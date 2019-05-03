@@ -1,4 +1,9 @@
 import csv
+import contextlib
+import gzip
+import sqlite3
+import shutil
+import tempfile
 import enum
 import collections
 import copy
@@ -30,6 +35,31 @@ CR_STYLES = {
     ChangeReason['NO_CHANGE']: CR_STYLE('green', '^', 'unchanged', 'unchanged')
 }
 
+MAX_DB_SCHEMA_VERSION = 2
+
+
+@contextlib.contextmanager
+def load_gzipped_sqlite(path):
+    with tempfile.NamedTemporaryFile() as out_f:
+        with gzip.open(path, 'rb') as in_f:
+            shutil.copyfileobj(in_f, out_f)
+        c = sqlite3.connect(out_f.name)
+        c.row_factory = sqlite3.Row
+        yield c
+        c.close()
+
+
+@contextlib.contextmanager
+def write_gzipped_sqlite(path):
+    with tempfile.NamedTemporaryFile() as in_f:
+        c = sqlite3.connect(in_f.name)
+        c.row_factory = sqlite3.Row
+        yield c
+        c.commit()
+        c.close()
+        with gzip.open(path, 'wb') as out_f:
+            shutil.copyfileobj(in_f, out_f)
+
 
 class Catalogue:
 
@@ -51,12 +81,34 @@ class Catalogue:
             for path, content_hash, attributes_hash in csv.reader(f):
                 self.add_file(path, content_hash, attributes_hash)
 
-    def to_csv(self, path: str):
-        with open(path, 'wt', newline='') as f:
-            writer = csv.writer(f, quoting=csv.QUOTE_ALL)
-            writer.writerow(['path', 'content_hash', 'attributes_hash'])
-            for path, (content_hsh, attributes_hsh) in self.to_dict().items():
-                writer.writerow([path, content_hsh, attributes_hsh])
+    def from_sqlite(self, path: str):
+        with load_gzipped_sqlite(path) as c:
+            schema_version = c.execute('PRAGMA user_version').fetchone()[0]
+            if schema_version > MAX_DB_SCHEMA_VERSION:
+                raise click.ClickException((
+                    'Upgrade to latest s3sup to continue. The s3sup version'
+                    'last used to push this project to S3 was newer than the '
+                    'installed version. The newer remote catalogue format is '
+                    'not readable by older s3sup version. Catalogue schema is '
+                    'version {0}, this s3sup only supports catalogue schema '
+                    'up to version {1}.').format(
+                        schema_version, MAX_DB_SCHEMA_VERSION))
+            # Handle migrations here
+            for row in c.execute('SELECT * FROM files'):
+                self.add_file(
+                    row['path'], row['content_hash'], row['attributes_hash'])
+
+    def to_sqlite(self, path: str):
+        with write_gzipped_sqlite(path) as c:
+            c.execute('PRAGMA user_version = {v:d}'.format(
+                v=MAX_DB_SCHEMA_VERSION))
+            c.execute('''CREATE TABLE files (
+                path TEXT,
+                content_hash TEXT,
+                attributes_hash TEXT)''')
+            c.executemany(
+                'INSERT INTO files VALUES (?, ?, ?)',
+                [(path, ch, ah) for path, (ch, ah) in self.to_dict().items()])
 
     def diff_dict(self, remote_catalogue):
         lcl = self.to_dict()

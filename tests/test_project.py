@@ -23,24 +23,6 @@ def all_bucket_keys(bucket):
 class TestProject(unittest.TestCase):
 
     @moto.mock_s3
-    def test_fixture_proj_1(self):
-        project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
-        p = Project(project_root)
-        cat = p.local_catalogue()
-
-        hndl, tmp_path = tempfile.mkstemp()
-        cat.to_csv(tmp_path)
-
-        exp_csv_p = os.path.join(
-            MODULE_DIR, 'expected_cat_fixture_proj_1.csv')
-        with open(tmp_path, 'rt') as cat_csv_f:
-            cat_csv = cat_csv_f.read()
-        with open(exp_csv_p, 'rt') as exp_csv_f:
-            exp_csv = exp_csv_f.read()
-        self.maxDiff = None
-        self.assertEqual(exp_csv, cat_csv)
-
-    @moto.mock_s3
     def test_build_non_existant_remote_catalogue(self):
         conn = boto3.resource('s3', region_name='eu-west-1')
         conn.create_bucket(Bucket='www.example.com')
@@ -51,7 +33,7 @@ class TestProject(unittest.TestCase):
         self.assertEqual({}, cat.to_dict())
 
     @moto.mock_s3
-    def test_build_existing_catalogue(self):
+    def test_build_existing_old_csv_catalogue(self):
         conn = boto3.resource('s3', region_name='eu-west-1')
         conn.create_bucket(Bucket='www.example.com')
         b = conn.Bucket('www.example.com')
@@ -292,6 +274,80 @@ s3_project_root = ''
             p.sync()
         self.assertIn('index.html', diff['unchanged'])
         self.assertIn('index.html', all_bucket_keys(b))
+
+
+class TestProjectMigrationFromCSVToSqlite(unittest.TestCase):
+
+    @moto.mock_s3
+    def test_normal_case_auto_migration(self):
+        """
+        If an on CSV type catalogue file exists, it should be replaced with the
+        SQLite version on the next push
+        """
+        self.conn = boto3.resource('s3', region_name='eu-west-1')
+        self.conn.create_bucket(Bucket='www.example.com')
+        project_root = os.path.join(MODULE_DIR, 'migration_fixture_proj_1')
+        p = Project(project_root)
+        p.sync()
+
+        b = self.conn.Bucket('www.example.com')
+        old_csv_p = os.path.join(
+            MODULE_DIR, 'migration_fixture_proj_1.s3sup.catalogue.csv')
+        with open(old_csv_p, 'rb') as old_csv_f:
+            b.put_object(
+                Key='.s3sup.catalogue.csv',
+                ACL='private',
+                Body=old_csv_f)
+        b.Object('.s3sup.cat').delete()
+
+        self.assertNotIn('.s3sup.cat', all_bucket_keys(b))
+        self.assertIn('.s3sup.catalogue.csv', all_bucket_keys(b))
+
+        project_root_n = os.path.join(MODULE_DIR, 'migration_fixture_proj_1.1')
+        pn = Project(project_root_n)
+        pn.sync()
+
+        self.assertIn('.s3sup.cat', all_bucket_keys(b))
+        self.assertIn('.s3sup.catalogue.csv', all_bucket_keys(b))
+        self.assertIn('additional.txt', all_bucket_keys(b))
+
+        o = b.Object('.s3sup.catalogue.csv')
+        with tempfile.NamedTemporaryFile() as tf:
+            o.download_fileobj(tf)
+            tf.seek(0)
+            with self.assertRaises(UnicodeDecodeError):
+                print(tf.read().decode('utf-8'))
+
+    @moto.mock_s3
+    def test_migration_interrupted_both_formats_now_on_s3_old_ignored(self):
+        """
+        It's possible the migration was interrupted and now both the CSV and
+        SQLite versions of the catalogue are now on S3. Need to make sure that
+        the only the new one is used when building the remote catalogue and not
+        the old one, which may be out of date.
+        """
+        self.conn = boto3.resource('s3', region_name='eu-west-1')
+        self.conn.create_bucket(Bucket='www.example.com')
+        project_root = os.path.join(MODULE_DIR, 'migration_fixture_proj_1.1')
+        p = Project(project_root)
+        p.sync()
+
+        b = self.conn.Bucket('www.example.com')
+        old_csv_p = os.path.join(
+            MODULE_DIR, 'migration_fixture_proj_1.s3sup.catalogue.csv')
+        with open(old_csv_p, 'rb') as old_csv_f:
+            b.put_object(
+                Key='.s3sup.catalogue.csv',
+                ACL='private',
+                Body=old_csv_f)
+
+        self.assertIn('.s3sup.cat', all_bucket_keys(b))
+        self.assertIn('.s3sup.catalogue.csv', all_bucket_keys(b))
+
+        project_root_n = os.path.join(MODULE_DIR, 'migration_fixture_proj_1.1')
+        pn = Project(project_root_n)
+        diff, new_remote_cat = pn.calculate_diff()
+        self.assertEqual(0, diff['num_changes'])
 
 
 if __name__ == '__main__':
