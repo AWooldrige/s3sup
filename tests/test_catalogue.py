@@ -6,7 +6,7 @@ import unittest
 
 from s3sup.catalogue import (
     Catalogue, load_gzipped_sqlite, write_gzipped_sqlite,
-    MAX_DB_SCHEMA_VERSION)
+    MAX_DB_SCHEMA_VERSION, change_list, ChangeReason, _order_for_upload)
 
 
 class TestCatalogueReadersAndWriters(unittest.TestCase):
@@ -205,6 +205,126 @@ class TestCatalogueDiff(unittest.TestCase):
         self.assertEqual(('fj8fj8', 'flwlfwl'), rmt_cat_d['tempfile.txt'])
         self.assertTrue('♬ /music.fav.mp3' in rmt_cat_d)
         self.assertEqual(('200010', '7A9 '), rmt_cat_d['♬ /music.fav.mp3'])
+
+
+class TestOrderForUpload(unittest.TestCase):
+    def testGeneral(self):
+        """
+        The rules are to upload:
+          1) Other assets first
+          2) CSS & JS next
+          3) HTML last (in case they reference any of the above assets)
+        """
+        original = [
+            'news/test.jpg.htm',    # .htm still probably in use
+            'extra/assets.js',
+            'assets.js',
+            'archive/index.htm',
+            'extra/1.2/assets.js',
+            'index.html',
+            'favicon.ico',
+            'noextension',
+            'archive/logo.png',
+            'welcome.HTML',         # Uppercase should be fine
+            'style.css',
+            'style.huh?',
+            '♬ /music.fav.mp3',
+            '♬ /music.fav.html',
+            'logo.jpg',
+            'additional/style.css'
+        ]
+        expected = [
+            # Unknown items first, deepest directories first
+            'archive/logo.png',
+            '♬ /music.fav.mp3',
+            'favicon.ico',
+            'logo.jpg',
+            'noextension',
+            'style.huh?',
+
+            # CSS next, deepest directories first
+            'additional/style.css',
+            'style.css',
+
+            # JS after, deepest directories first
+            'extra/1.2/assets.js',
+            'extra/assets.js',
+            'assets.js',
+
+            # HTML last, deepest directories first
+            'archive/index.htm',
+            'news/test.jpg.htm',
+            '♬ /music.fav.html',
+            'index.html',
+            'welcome.HTML'
+        ]
+        self.assertEqual(expected, _order_for_upload(original))
+
+
+class TestChangeList(unittest.TestCase):
+
+    def testHtmlFilesListedLastForNewUploads(self):
+        """
+        This is a rather crude was of ensuring static assets are available
+        before the HTML documents that reference them.
+        """
+        local_cat = (
+            Catalogue()
+            .add_file('news/test.jpg.htm', 'GGG', '777')
+            .add_file('flex.js', 'HHH', '888')
+            .add_file('assets/blah.jpg', 'FFF', '666')
+            .add_file('assets/xtr/blam.css', 'III', '999')
+            .add_file('index.html', 'AAA', '111')
+            .add_file('words.txt', 'HHH', '888')
+            .add_file('test/I think, "great.img', 'DDD', '444')
+            .add_file('assets/blah.png', 'EEE', '555')
+        )
+        remote_cat = Catalogue()
+        diff, new_remote_catalogue = local_cat.diff_dict(remote_cat)
+        cl = change_list(diff)
+        self.assertEqual([
+            (ChangeReason.NEW_FILE, 'assets/blah.jpg'),
+            (ChangeReason.NEW_FILE, 'assets/blah.png'),
+            (ChangeReason.NEW_FILE, 'test/I think, "great.img'),
+            (ChangeReason.NEW_FILE, 'words.txt'),
+            (ChangeReason.NEW_FILE, 'assets/xtr/blam.css'),
+            (ChangeReason.NEW_FILE, 'flex.js'),
+            (ChangeReason.NEW_FILE, 'news/test.jpg.htm'),
+            (ChangeReason.NEW_FILE, 'index.html')
+        ], cl)
+
+    def testHtmlFilesListedLastForChangedFiles(self):
+        local_cat = (
+            Catalogue()
+            .add_file('news/test.jpg.htm', 'GGG', '777')
+            .add_file('flex.js', 'HHH', '888')
+            .add_file('assets/blah.jpg', 'FFF', '666')
+            .add_file('assets/xtr/blam.css', 'III', '999')
+            .add_file('index.html', 'AAA', '111')
+            .add_file('words.txt', 'HHH', '888')
+            .add_file('test/I think, "great.img', 'DDD', '444')
+            .add_file('assets/blah.png', 'EEE', '555')
+        )
+        remote_cat = (
+            Catalogue()
+            .add_file('news/test.jpg.htm', 'GGGCHANGED', '777')
+            .add_file('flex.js', 'HHH', '888')
+            .add_file('assets/blah.jpg', 'FFFCHANGED', '666')
+            .add_file('assets/xtr/blam.css', 'IIICHANGED', '999')
+            .add_file('index.html', 'AAACHANGED', '111')
+            .add_file('words.txt', 'HHHCHANGED', '888')
+            .add_file('test/I think, "great.img', 'DDD', '444')
+            .add_file('assets/blah.png', 'EEE', '555')
+        )
+        diff, new_remote_catalogue = local_cat.diff_dict(remote_cat)
+        cl = change_list(diff)
+        self.assertEqual([
+            (ChangeReason.CONTENT_CHANGED, 'assets/blah.jpg'),
+            (ChangeReason.CONTENT_CHANGED, 'words.txt'),
+            (ChangeReason.CONTENT_CHANGED, 'assets/xtr/blam.css'),
+            (ChangeReason.CONTENT_CHANGED, 'news/test.jpg.htm'),
+            (ChangeReason.CONTENT_CHANGED, 'index.html')
+        ], cl)
 
 
 if __name__ == '__main__':

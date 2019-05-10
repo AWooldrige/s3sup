@@ -1,15 +1,24 @@
 # s3sup internals
 ## Catalogue file
 The catalogue file contains hashes of all files in a s3sup project. Paths are
-relative to the project directory. The catalog file (`s3sup.catalogue.csv`) is
+relative to the project directory. The catalog file (`s3sup.cat`) is
 uploaded to the S3 destination (without being publicly readable) to allow s3sup
 to upload only what is needed during subsequent uploads.
 
-Example structure:
+
+## Old CSV catalogue file
+Before the move to SQLite, the catalogue used to be a simple CSV file. Example
+structure:
 
     file_path,content_hash,headers_hash
     "/assets/logo.svg",AAA,BBB
     "/index.html",XXX,YYY
+
+This is no longer used and s3sup versions >= 0.4.0 will automatically migrate
+to the new SQLite format. An intentionally corrupt `.s3sup.catalogue.csv` is
+put in its place so that older versions of s3sup (<= 0.3.0) fail hard, rather
+than not being aware of the new format and attempting to upload the whole
+project again.
 
 
 ## Development backlog
@@ -20,7 +29,6 @@ Documentation
 
 New features
  * [ ] Add profiles support, e.g. for 'staging' and 'prod'.
- * [ ] Add --nodelete option and config setting.
  * [ ] Add --force option to upload as if no remote catalogue available.
  * [ ] Allow S3 website redirects to be set.
  * [ ] Allow custom error page to be set.
@@ -29,12 +37,9 @@ New features
 
 Improvements
  * [ ] Add tests to make sure performant (cycles/mem) with huge projects
- * [ ] Upload new files in order: others, CSS, JS, HTML
- * [ ] Add compression to s3sup catalogue file.
  * [ ] If no projectdir provided, walk up dirs to find s3sup.toml, like git.
  * [ ] Detect when S3 bucket doesn't exist. Stacktrace at the moment.
  * [ ] Add retry to S3 uploads.
- * [ ] Add compression to s3sup catalogue file.
  * [ ] Add python 3 type hints.
  * [ ] Sort out usage of temporary files. Make sure tests and main source don't
    spew files to `/tmp` in error conditions.

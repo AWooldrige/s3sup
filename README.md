@@ -12,6 +12,16 @@ Demo of new site being uploaded to S3:
 
 <p align="center"><img src="/docs/termrecs/render_s3supdemo_newsite.gif?raw=true"/></p>
 
+Other features:
+
+ * Ordering of uploads to prevent HTML files referencing static assets that
+   haven't been uploaded yet.
+ * Deletes files from S3 that no longer exist in the local project directory.
+   This can also be prevented with `--nodelete` command line option or
+   `preserve_deleted_files` config file key, should you want them to stick
+   around.
+
+
 ## Getting started
 Follow these steps to get a new site uploaded to S3 with s3sup.
 

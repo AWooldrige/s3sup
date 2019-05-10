@@ -204,23 +204,48 @@ def print_diff_summary(dd, verbose=False):
     _p(dd['unchanged'], 'NO_CHANGE')
 
 
+def _order_for_upload(path_names):
+    """
+    Prevent HTML files referencing static assets (stylesheets/scripts/images)
+    before they exist on S3. Achieved by applying a crude but effective
+    ordering to the upload sequence to ensure HTML files are uploaded after all
+    other assets.
+    """
+    html, css, js, others = [], [], [], []
+    for p in path_names:
+        pl = p.lower()
+        if pl.endswith(('.html', '.htm', '.xhtml')):
+            html.append(p)
+        elif pl.endswith(('.css')):
+            css.append(p)
+        elif pl.endswith(('.js')):
+            js.append(p)
+        else:
+            others.append(p)
+
+    def _srt(g):
+        return sorted(sorted(g), key=lambda x: x.count('/'), reverse=True)
+
+    ordered = _srt(others) + _srt(css) + _srt(js) + _srt(html)
+    assert len(ordered) == len(path_names)
+    return ordered
+
+
 def change_list(diff):
     """
-    Paths that need changes made on S3, along with the reason.
+    Paths that need changes made on S3, along with the reason why.
 
     Changes should be made in the order returned, in an attempt to prevent the
-    temporary period where there may be incorrect links between HTML files and
-    static assets that haven't been uploaded yet.
+    temporary period where there may be incorrect links between HTML files,
+    referencing static assets that haven't been uploaded yet.
     """
     # Attribute changes first, less risk of content changes.
     dl = [(ChangeReason.ATTRIBUTES_CHANGED, p)
           for p in diff['upload']['attributes_changed']]
-    # TODO: Upload in order: others, CSS, JS, HTML
     dl += [(ChangeReason.NEW_FILE, p)
-           for p in diff['upload']['new_files']]
-    # TODO: Upload in same order as above
+           for p in _order_for_upload(diff['upload']['new_files'])]
     dl += [(ChangeReason.CONTENT_CHANGED, p)
-           for p in diff['upload']['content_changed']]
+           for p in _order_for_upload(diff['upload']['content_changed'])]
     dl += [(ChangeReason.DELETED, p)
            for p in diff['delete']]
     return dl

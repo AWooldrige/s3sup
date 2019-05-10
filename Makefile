@@ -24,9 +24,14 @@ clean::
 .PHONY: test
 test:: venv flake8 twine_check unittest
 
+.PHONY: unittest
 unittest:: venv
 	. venv/bin/activate && python3 -m unittest
 
+.PHONY: unittest_profile
+unittest_profile:: venv
+	. venv/bin/activate && python3 -m cProfile -o profiler.output -m unittest
+	. venv/bin/activate && python3 -m pstats profiler.output
 
 ###############################################################################
 # Targets lazily using a Makefile a script runner
