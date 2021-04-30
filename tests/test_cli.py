@@ -40,7 +40,9 @@ class S3supCliTestCaseBase(unittest.TestCase):
 
     def create_example_bucket(self):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
-        self.conn.create_bucket(Bucket='www.example.com')
+        self.conn.create_bucket(
+            Bucket='www.example.com',
+            CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
         b = self.conn.Bucket('www.example.com')
         return b
 
@@ -52,8 +54,7 @@ class S3supCliTestCaseBase(unittest.TestCase):
             os.chdir(new_projdir)
             result = runner.invoke(
                 s3sup.scripts.s3sup.cli,
-                invoke_cmd,
-                mix_stderr=False)
+                invoke_cmd)
             return result
 
 
@@ -73,8 +74,7 @@ class TestInit(unittest.TestCase):
         with runner.isolated_filesystem():
             cf = pathlib.Path('s3sup.toml')
             cf.write_text('# Dummy file')
-            result = runner.invoke(
-                s3sup.scripts.s3sup.cli, ['init'], mix_stderr=False)
+            result = runner.invoke(s3sup.scripts.s3sup.cli, ['init'])
             self.assertEqual(1, result.exit_code)
             self.assertIn(
                 's3sup configuration file already exists', result.stderr)
@@ -90,8 +90,7 @@ class TestStatus(S3supCliTestCaseBase):
         runner = CliRunner(mix_stderr=False)
         result = runner.invoke(
             s3sup.scripts.s3sup.cli,
-            ['status', '-p', project_root, '-v'],
-            mix_stderr=False)
+            ['status', '-p', project_root, '-v'])
         self.assertSuccess(result)
         self.assertIn('new: 11 files', result.stdout)
 
@@ -105,8 +104,7 @@ class TestStatus(S3supCliTestCaseBase):
         runner = CliRunner(mix_stderr=False)
         result = runner.invoke(
             s3sup.scripts.s3sup.cli,
-            ['st', '-p', project_root, '-v'],
-            mix_stderr=False)
+            ['st', '-p', project_root, '-v'])
         self.assertSuccess(result)
         self.assertIn('new: 11 files', result.stdout)
 
@@ -120,8 +118,7 @@ class TestStatus(S3supCliTestCaseBase):
         runner = CliRunner(mix_stderr=False)
         result = runner.invoke(
             s3sup.scripts.s3sup.cli,
-            ['status', '-p', project_root],
-            mix_stderr=False)
+            ['status', '-p', project_root])
         self.assertSuccess(result)
         self.assertIn('new: 1 file', result.stdout)
 
@@ -326,8 +323,7 @@ class TestInspect(S3supCliTestCaseBase):
         runner = CliRunner(mix_stderr=False)
         result = runner.invoke(
             s3sup.scripts.s3sup.cli,
-            ['inspect', '-p', project_root, 'index.html'],
-            mix_stderr=False)
+            ['inspect', '-p', project_root, 'index.html'])
         self.assertSuccess(result)
         self.assertIn('ACL: public-read', result.stdout)
 
@@ -341,8 +337,7 @@ class TestInspect(S3supCliTestCaseBase):
             os.chdir(new_projdir)
             result = runner.invoke(
                 s3sup.scripts.s3sup.cli,
-                ['inspect', 'robots.txt'],
-                mix_stderr=False)
+                ['inspect', 'robots.txt'])
             self.assertSuccess(result)
             self.assertIn('robots.txt', result.stdout)
             self.assertIn('Cache-Control: private; max-age=400', result.stdout)
@@ -353,8 +348,7 @@ class TestInspect(S3supCliTestCaseBase):
         result = runner.invoke(
             s3sup.scripts.s3sup.cli,
             ['inspect', '-p', project_root, 'robots.txt', 'non_existant.file',
-             'white-paper.pdf'],
-            mix_stderr=False)
+             'white-paper.pdf'])
         self.assertSuccess(result)
         self.assertIn('robots.txt', result.stdout)
         self.assertIn('Cache-Control: private; max-age=400', result.stdout)

@@ -25,7 +25,9 @@ class TestProject(unittest.TestCase):
     @moto.mock_s3
     def test_build_non_existant_remote_catalogue(self):
         conn = boto3.resource('s3', region_name='eu-west-1')
-        conn.create_bucket(Bucket='www.example.com')
+        conn.create_bucket(
+            Bucket='www.example.com',
+            CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
 
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         p = Project(project_root)
@@ -35,7 +37,9 @@ class TestProject(unittest.TestCase):
     @moto.mock_s3
     def test_build_existing_old_csv_catalogue(self):
         conn = boto3.resource('s3', region_name='eu-west-1')
-        conn.create_bucket(Bucket='www.example.com')
+        conn.create_bucket(
+            Bucket='www.example.com',
+            CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
         b = conn.Bucket('www.example.com')
         exp_csv_p = os.path.join(
             MODULE_DIR, 'expected_cat_fixture_proj_1.csv')
@@ -55,7 +59,9 @@ class TestProjectSyncNoChanges(unittest.TestCase):
     @moto.mock_s3
     def test_no_project_changes(self):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
-        self.conn.create_bucket(Bucket='www.example.com')
+        self.conn.create_bucket(
+            Bucket='www.example.com',
+            CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         p = Project(project_root)
         p.sync()
@@ -82,7 +88,9 @@ class TestProjectSyncProjectChanges(unittest.TestCase):
     @moto.mock_s3
     def test_fixture_proj_2_minimal(self):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
-        self.conn.create_bucket(Bucket='www.example.com')
+        self.conn.create_bucket(
+            Bucket='www.example.com',
+            CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_2_minimal')
         p = Project(project_root)
         p.sync()
@@ -94,7 +102,9 @@ class TestProjectSyncProjectChanges(unittest.TestCase):
     @moto.mock_s3
     def test_multiple_project_changes(self):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
-        self.conn.create_bucket(Bucket='www.example.com')
+        self.conn.create_bucket(
+            Bucket='www.example.com',
+            CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
         project_root = os.path.join(MODULE_DIR, 'fixture_proj_1')
         p = Project(project_root)
         p.sync()
@@ -142,7 +152,9 @@ class TestMultipleProjectConfigurations(unittest.TestCase):
 
     def create_example_bucket(self):
         self.conn = boto3.resource('s3', region_name='eu-west-1')
-        b = self.conn.create_bucket(Bucket='www.example.com')
+        b = self.conn.create_bucket(
+            Bucket='www.example.com',
+            CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
         return b
 
     def create_projdir_with_conf(self, skeleton_dir_name, new_dir, config):
@@ -285,7 +297,9 @@ class TestProjectMigrationFromCSVToSqlite(unittest.TestCase):
         SQLite version on the next push
         """
         self.conn = boto3.resource('s3', region_name='eu-west-1')
-        self.conn.create_bucket(Bucket='www.example.com')
+        self.conn.create_bucket(
+            Bucket='www.example.com',
+            CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
         project_root = os.path.join(MODULE_DIR, 'migration_fixture_proj_1')
         p = Project(project_root)
         p.sync()
@@ -327,7 +341,9 @@ class TestProjectMigrationFromCSVToSqlite(unittest.TestCase):
         the old one, which may be out of date.
         """
         self.conn = boto3.resource('s3', region_name='eu-west-1')
-        self.conn.create_bucket(Bucket='www.example.com')
+        self.conn.create_bucket(
+            Bucket='www.example.com',
+            CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
         project_root = os.path.join(MODULE_DIR, 'migration_fixture_proj_1.1')
         p = Project(project_root)
         p.sync()
